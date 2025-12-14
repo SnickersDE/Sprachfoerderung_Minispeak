@@ -86,6 +86,43 @@ class DataManager {
     // Markiere Unter-Level als abgeschlossen
 completeSublevel(childId, levelId, sublevelId) {
 const child = this.usersData.children.find(c => c.id === childId);
-  
-  // Globale Instanz
+    if (child) {
+        if (!child.progress[levelId].completed_sublevels.includes(sublevelId)) {
+            child.progress[levelId].completed_sublevels.push(sublevelId);
+            this.saveUsers();
+            console.log(`✅ Sublevel ${sublevelId} abgeschlossen für ${child.name}`);
+        }
+    }
+}
+
+// Berechne Fortschritt in Prozent
+calculateProgress(childId, levelId) {
+    const level = this.getLevels().find(l => l.id === levelId);
+    const completed = this.getProgress(childId, levelId);
+    const total = level?.sublevels.length || 1;
+    return Math.round((completed.length / total) * 100);
+}
+
+// Reset Fortschritt (für Demo)
+resetProgress(childId) {
+    const child = this.usersData.children.find(c => c.id === childId);
+    if (child) {
+        Object.keys(child.progress).forEach(levelId => {
+            child.progress[levelId].completed_sublevels = [];
+        });
+        this.saveUsers();
+        console.log(`🔄 Fortschritt für ${child.name} zurückgesetzt`);
+        }
+    }
+}
+
+// Globale Instanz
 const dataManager = new DataManager();
+
+**Entwickler-Beschreibung für `data-manager.js`:**
+- **Zweck**: Zentrale Datenverwaltung für Levels und Benutzerfortschritte
+- **localStorage**: Speichert Fortschritte lokal im Browser (keine Server-Kommunikation nötig)
+- **Erweiterung**: Für Produktiveinsatz Backend-API einbinden (z.B. REST oder GraphQL)
+- **Anpassung**: Neue Methoden können hinzugefügt werden (z.B. `exportProgress()` für CSV-Export)
+
+---
