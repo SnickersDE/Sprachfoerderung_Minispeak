@@ -1,0 +1,55 @@
+{
+  "children": [
+    {
+      "id": "child_1",
+      "name": "Anna",
+      "age": 5,
+      "avatar": "👧",
+      "progress": {
+        "level_1": {
+          "completed_sublevels": []
+        },
+        "level_2": {
+          "completed_sublevels": []
+        },
+        "level_3": {
+          "completed_sublevels": []
+        }
+      }
+    },
+    {
+      "id": "child_2",
+      "name": "Max",
+      "age": 6,
+      "avatar": "👦",
+      "progress": {
+        "level_1": {
+          "completed_sublevels": []
+        },
+        "level_2": {
+          "completed_sublevels": []
+        },
+        "level_3": {
+          "completed_sublevels": []
+        }
+      }
+    },
+    {
+      "id": "child_3",
+      "name": "Lena",
+      "age": 5,
+      "avatar": "👧",
+      "progress": {
+        "level_1": {
+          "completed_sublevels": []
+        },
+        "level_2": {
+          "completed_sublevels": []
+        },
+        "level_3": {
+          "completed_sublevels": []
+        }
+      }
+    }
+  ]
+}
