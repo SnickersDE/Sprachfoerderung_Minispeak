@@ -145,7 +145,7 @@ resetProgress(childId) {
     }
 }
 
-saveChildProgress(childId) {
+saveChildProgress(childId) 
     const child = this.usersData.children.find(c => c.id === childId);
     if (child) {
         localStorage.setItem(`progress_${childId}`, JSON.stringify(child.progress));
@@ -168,3 +168,4 @@ loadChildProgress(childId) {
 
 // Globale Instanz
 const dataManager = new DataManager();
+
