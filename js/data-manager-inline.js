@@ -138,14 +138,60 @@ class DataManager {
         {
             "id": "child_6",
             "name": "Florian",
-            "age": 5,
-            "avatar": "👧",
+            "age": 3,
+            "avatar": "👦",
             "progress": {
                 "level_1": { "completed_sublevels": [] },
                 "level_2": { "completed_sublevels": [] },
                 "level_3": { "completed_sublevels": [] }
             }
-        }
+            "id": "child_6",
+            "name": "Anja",
+            "age": 4,
+            "avatar": "👧",
+            "progress": {
+                "level_1": { "completed_sublevels": [] },
+                "level_2": { "completed_sublevels": [] },
+                "level_3": { "completed_sublevels": [] }
+        },
+        {
+            "id": "child_7",
+            "name": "Tobias",
+            "age": 5,
+            "avatar": "👦",
+            "progress": {
+                "level_1": { "completed_sublevels": [] },
+                "level_2": { "completed_sublevels": [] },
+                "level_3": { "completed_sublevels": [] }
+            }
+            "id": "child_8",
+            "name": "Pedro",
+            "age": 5,
+            "avatar": "👦",
+            "progress": {
+                "level_1": { "completed_sublevels": [] },
+                "level_2": { "completed_sublevels": [] },
+                "level_3": { "completed_sublevels": [] }
+        },
+        {
+            "id": "child_9",
+            "name": "Luis",
+            "age": 6,
+            "avatar": "👦",
+            "progress": {
+                "level_1": { "completed_sublevels": [] },
+                "level_2": { "completed_sublevels": [] },
+                "level_3": { "completed_sublevels": [] }
+            }
+            "id": "child_10",
+            "name": "Marie",
+            "age": 3,
+            "avatar": "👧",
+            "progress": {
+                "level_1": { "completed_sublevels": [] },
+                "level_2": { "completed_sublevels": [] },
+                "level_3": { "completed_sublevels": [] }
+         },
     ]
 };
 
