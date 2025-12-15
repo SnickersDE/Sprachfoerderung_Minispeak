@@ -469,6 +469,10 @@ h2 {
     background: #fff;
     margin-right: 10px;
 }
+.voice-select::placeholder {
+    color: #777;
+}
+
 .profile-row .value {
     font-weight: 600;
     color: #333;
@@ -525,6 +529,7 @@ h2 {
     background-position: 100% 50%;
   }
 }
+
 
 
 
