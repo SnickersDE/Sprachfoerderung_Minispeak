@@ -66,13 +66,11 @@
                 <p id="story-recognition-status" class="status-text" aria-live="polite">Drücke auf das Mikrofon zum Starten</p>
             </div>
             <div class="story-controls action-buttons">
-                <label for="voice-select" style="align-self:center;">Stimme</label>
-                <select id="voice-select" class="voice-select"></select>
-                <input id="openai-voice" class="voice-select" placeholder="OpenAI Voice z.B. aria">
                 <input id="openai-key" type="password" class="voice-select" placeholder="OpenAI API Key">
-                <button id="btn-story-play" class="btn btn-primary">▶️ Vorlesen</button>
-                <button id="btn-story-stop" class="btn btn-secondary">⏹️ Stop</button>
+                 <button id="btn-story-play" class="btn btn-primary">▶️ Mit vorlesen beginnen</button>
+                <button id="btn-story-stop" class="btn btn-secondary">⏹️ Vorlesen stoppen</button>
             </div>
+            <div id="story-large-image" class="word-image-container" aria-live="polite"></div>
             <div id="story-text" class="story-text"></div>
         </div>
     </div>
