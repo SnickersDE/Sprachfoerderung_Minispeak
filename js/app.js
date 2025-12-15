@@ -13,7 +13,9 @@ const screens = {
     overview: document.getElementById('overview-screen'),
     training: document.getElementById('training-screen'),
     story: document.getElementById('story-screen'),
-    memory: document.getElementById('memory-screen')
+    memory: document.getElementById('memory-screen'),
+    sound: document.getElementById('sound-screen'),
+    sound_detail: document.getElementById('sound-detail-screen')
 };
 
 // Initialisierung
@@ -112,20 +114,57 @@ function setupEventListeners() {
     }
     const storyStartBtn = document.getElementById('btn-story-start');
     if (storyStartBtn) {
-        storyStartBtn.addEventListener('click', () => openStoryGame());
-    }
-    const memoryCard = document.getElementById('memory-card');
-    if (memoryCard) {
-        memoryCard.addEventListener('click', () => openMemoryGame());
-        memoryCard.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                openMemoryGame();
-            }
+        storyStartBtn.addEventListener('click', () => {
+            currentVocabLevel = 1;
+            openStoryGame();
         });
     }
-    const memoryStartBtn = document.getElementById('btn-memory-start');
-    if (memoryStartBtn) memoryStartBtn.addEventListener('click', () => openMemoryGame());
+    const vocab2Card = document.getElementById('vocab2-card');
+    const vocab3Card = document.getElementById('vocab3-card');
+    const vocab2StartBtn = document.getElementById('btn-vocab2-start');
+    const vocab3StartBtn = document.getElementById('btn-vocab3-start');
+    if (vocab2Card) {
+        vocab2Card.addEventListener('click', () => { currentVocabLevel = 2; openStoryGame(); });
+        vocab2Card.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); currentVocabLevel = 2; openStoryGame(); }
+        });
+    }
+    if (vocab3Card) {
+        vocab3Card.addEventListener('click', () => { currentVocabLevel = 3; openStoryGame(); });
+        vocab3Card.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); currentVocabLevel = 3; openStoryGame(); }
+        });
+    }
+    if (vocab2StartBtn) vocab2StartBtn.addEventListener('click', () => { currentVocabLevel = 2; openStoryGame(); });
+    if (vocab3StartBtn) vocab3StartBtn.addEventListener('click', () => { currentVocabLevel = 3; openStoryGame(); });
+    const memory1Card = document.getElementById('memory1-card');
+    const memory2Card = document.getElementById('memory2-card');
+    const memory3Card = document.getElementById('memory3-card');
+    const memory1StartBtn = document.getElementById('btn-memory1-start');
+    const memory2StartBtn = document.getElementById('btn-memory2-start');
+    const memory3StartBtn = document.getElementById('btn-memory3-start');
+    if (memory1Card) {
+        memory1Card.addEventListener('click', () => { memoryLevel = 1; openMemoryGame(); });
+        memory1Card.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); memoryLevel = 1; openMemoryGame(); } });
+    }
+    if (memory2Card) {
+        memory2Card.addEventListener('click', () => { memoryLevel = 2; openMemoryGame(); });
+        memory2Card.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); memoryLevel = 2; openMemoryGame(); } });
+    }
+    if (memory3Card) {
+        memory3Card.addEventListener('click', () => { memoryLevel = 3; openMemoryGame(); });
+        memory3Card.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); memoryLevel = 3; openMemoryGame(); } });
+    }
+    if (memory1StartBtn) memory1StartBtn.addEventListener('click', () => { memoryLevel = 1; openMemoryGame(); });
+    if (memory2StartBtn) memory2StartBtn.addEventListener('click', () => { memoryLevel = 2; openMemoryGame(); });
+    if (memory3StartBtn) memory3StartBtn.addEventListener('click', () => { memoryLevel = 3; openMemoryGame(); });
+    const soundCard = document.getElementById('sound-card');
+    const soundStartBtn = document.getElementById('btn-sound-start');
+    if (soundCard) {
+        soundCard.addEventListener('click', () => openSoundGame());
+        soundCard.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openSoundGame(); } });
+    }
+    if (soundStartBtn) soundStartBtn.addEventListener('click', () => openSoundGame());
     const endStoryBtn = document.getElementById('btn-end-story');
     if (endStoryBtn) {
         endStoryBtn.addEventListener('click', () => {
@@ -136,6 +175,19 @@ function setupEventListeners() {
     if (endMemoryBtn) {
         endMemoryBtn.addEventListener('click', () => {
             showScreen('overview');
+        });
+    }
+    const endSoundBtn = document.getElementById('btn-end-sound');
+    if (endSoundBtn) {
+        endSoundBtn.addEventListener('click', () => {
+            showScreen('overview');
+        });
+    }
+    const backSoundDetailBtn = document.getElementById('btn-back-sound-detail');
+    if (backSoundDetailBtn) {
+        backSoundDetailBtn.addEventListener('click', () => {
+            showScreen('sound');
+            renderSoundCategories();
         });
     }
     const storyMic = document.getElementById('story-mic');
@@ -276,10 +328,7 @@ function renderMemoryGame() {
 }
 
 function getRhymeGroupsForLevel(memLevel) {
-    const levelIndex = memLevel - 1;
-    const levelData = dataManager.getLevel(levelIndex);
-    const groups = levelData.sublevels.map(s => s.reim_ideen);
-    return groups;
+    return dataManager.getRhymeGroupsForMemoryLevel(memLevel);
 }
 
 function buildMemoryRound() {
@@ -291,19 +340,17 @@ function buildMemoryRound() {
     memoryRhymeSet = targetGroup.slice();
     memoryFoundCount = 0;
     grid.innerHTML = '';
-    const allWords = [];
     const rhymeCount = memoryLevel === 1 ? 2 : memoryLevel === 2 ? 3 : 4;
     const distractorCount = memoryLevel === 1 ? 2 : memoryLevel === 2 ? 3 : 4;
     const rhymeChoices = shuffle(memoryRhymeSet.filter(w => w !== memoryTarget)).slice(0, rhymeCount);
-    allWords.push(...rhymeChoices);
-    while (allWords.length < rhymeCount + distractorCount) {
-        const g = groups[Math.floor(Math.random() * groups.length)];
-        const w = g[Math.floor(Math.random() * g.length)];
-        if (!memoryRhymeSet.includes(w) && !allWords.includes(w)) allWords.push(w);
+    const nonRhymesPool = dataManager.getNonRhymesForMemoryLevel(memoryLevel);
+    const distractors = [];
+    for (let i = 0; i < nonRhymesPool.length && distractors.length < distractorCount; i++) {
+        const w = nonRhymesPool[i];
+        if (!memoryRhymeSet.includes(w) && !distractors.includes(w)) distractors.push(w);
     }
-    const cards = shuffle(allWords);
-    const levelData = dataManager.getLevel(memoryLevel - 1);
-    const folder = levelData.sublevels[0]?.bild_ordner || `level${memoryLevel}`;
+    const cards = shuffle([...rhymeChoices, ...distractors]);
+    const folder = `level${memoryLevel}`;
     cards.forEach((word, idx) => {
         const card = document.createElement('div');
         card.className = 'word-card';
@@ -319,7 +366,6 @@ function buildMemoryRound() {
         grid.appendChild(card);
     });
     updateMemoryStatus();
-    playTargetAudio();
 }
 
 function handleMemoryCardClick(card, imgPath, word) {
@@ -363,6 +409,11 @@ function updateMemoryStatus() {
     const total = (memoryLevel === 1 ? 2 : memoryLevel === 2 ? 3 : 4);
     const box = document.getElementById('memory-status');
     if (box) box.innerHTML = `<p>Gefundene Reime: ${memoryFoundCount}/${total} • Zielwort: ${memoryTarget}</p>`;
+    const pf = document.getElementById('memory-progress-fill');
+    if (pf) {
+        const pct = total ? Math.round((memoryFoundCount / total) * 100) : 0;
+        pf.style.width = `${pct}%`;
+    }
 }
 
 function playTargetAudio() {
@@ -415,6 +466,188 @@ function renderStoryGame() {
     document.getElementById('story-info').textContent = `Level ${currentVocabLevel} – Tippe ein Bild und ich spreche das Wort`;
     const nextBtn = document.getElementById('btn-next-level');
     if (nextBtn) nextBtn.style.display = doneWords.size >= words.length && words.length ? 'inline-block' : 'none';
+}
+
+const SOUND_CATEGORIES = {
+    tiere: {
+        label: 'Tiere',
+        items: [
+            { id: 'miauen', options: ['hund','katze','kuh','schaf'], correct: 'katze' },
+            { id: 'bellen', options: ['hund','katze','kuh','schaf'], correct: 'hund' },
+            { id: 'voegel', options: ['vogel','katze','kuh','schaf'], correct: 'vogel' },
+            { id: 'kuh', options: ['hund','katze','kuh','schaf'], correct: 'kuh' }
+        ]
+    },
+    alltag: {
+        label: 'Alltag',
+        items: [
+            { id: 'wasser', options: ['wasser','telefon','auto','tuer'], correct: 'wasser' },
+            { id: 'tuer', options: ['wasser','telefon','auto','tuer'], correct: 'tuer' },
+            { id: 'auto', options: ['wasser','telefon','auto','tuer'], correct: 'auto' },
+            { id: 'telefon', options: ['wasser','telefon','auto','tuer'], correct: 'telefon' }
+        ]
+    },
+    musik: {
+        label: 'Musik',
+        items: [
+            { id: 'gitarre', options: ['gitarre','trompete','schlagzeug','rassel'], correct: 'gitarre' },
+            { id: 'trompete', options: ['gitarre','trompete','schlagzeug','rassel'], correct: 'trompete' },
+            { id: 'schlagzeug', options: ['gitarre','trompete','schlagzeug','rassel'], correct: 'schlagzeug' },
+            { id: 'rassel', options: ['gitarre','trompete','schlagzeug','rassel'], correct: 'rassel' }
+        ]
+    }
+};
+let soundCategory = null;
+let soundProgress = {};
+
+function loadSoundProgress() {
+    try {
+        const raw = localStorage.getItem('sound_progress') || '{}';
+        soundProgress = JSON.parse(raw);
+    } catch {
+        soundProgress = {};
+    }
+    Object.keys(SOUND_CATEGORIES).forEach(k => {
+        if (!soundProgress[k]) soundProgress[k] = { done: [] };
+    });
+}
+function saveSoundProgress() {
+    localStorage.setItem('sound_progress', JSON.stringify(soundProgress));
+}
+function getSoundCategoryPercent(catKey) {
+    const total = SOUND_CATEGORIES[catKey].items.length;
+    const done = soundProgress[catKey].done.length;
+    return Math.round((done / total) * 100);
+}
+function updateSoundOverviewProgress() {
+    const fill = document.getElementById('sound-overview-progress');
+    if (!fill) return;
+    const keys = Object.keys(SOUND_CATEGORIES);
+    let completedCats = 0;
+    keys.forEach(k => {
+        if (getSoundCategoryPercent(k) === 100) completedCats++;
+    });
+    const pct = Math.round((completedCats / keys.length) * 100);
+    fill.style.width = `${pct}%`;
+}
+
+function openSoundGame() {
+    loadSoundProgress();
+    showScreen('sound');
+    renderSoundCategories();
+}
+function renderSoundCategories() {
+    const grid = document.getElementById('sound-category-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    Object.keys(SOUND_CATEGORIES).forEach(key => {
+        const cat = SOUND_CATEGORIES[key];
+        const card = document.createElement('div');
+        card.className = 'level-card';
+        card.innerHTML = `
+            <div class="level-header">
+                <div class="level-icon">🔊</div>
+                <div class="difficulty-badge difficulty-leicht">Spiel</div>
+            </div>
+            <h3>${cat.label}</h3>
+            <div class="progress-bar"><div class="progress-fill" style="width:${getSoundCategoryPercent(key)}%"></div></div>
+            <button class="btn btn-primary">Öffnen</button>
+        `;
+        card.addEventListener('click', () => openSoundCategory(key));
+        grid.appendChild(card);
+    });
+    const pf = document.getElementById('sound-progress-fill');
+    if (pf) pf.style.width = '0%';
+    updateSoundOverviewProgress();
+}
+function openSoundCategory(catKey) {
+    soundCategory = catKey;
+    const grid = document.getElementById('sound-category-grid');
+    if (!grid) return;
+    const cat = SOUND_CATEGORIES[catKey];
+    grid.innerHTML = '';
+    cat.items.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'level-card';
+        const done = soundProgress[catKey].done.includes(item.id);
+        card.innerHTML = `
+            <div class="level-header">
+                <div class="level-icon">🎧</div>
+                <div class="difficulty-badge ${done ? 'difficulty-leicht' : 'difficulty-mittel'}">${done ? 'fertig' : 'offen'}</div>
+            </div>
+            <h3>${item.id}</h3>
+            <div class="action-buttons">
+                <button class="btn btn-success">🟢 Abspielen</button>
+                <button class="btn btn-primary">Auswählen</button>
+            </div>
+        `;
+        const playBtn = card.querySelector('.btn.btn-success');
+        const selBtn = card.querySelector('.btn.btn-primary');
+        playBtn.addEventListener('click', (e) => { e.stopPropagation(); playSoundAudio(catKey, item.id); });
+        selBtn.addEventListener('click', (e) => { e.stopPropagation(); openSoundDetail(item); });
+        card.addEventListener('click', () => openSoundDetail(item));
+        grid.appendChild(card);
+    });
+    const pf = document.getElementById('sound-progress-fill');
+    if (pf) pf.style.width = `${getSoundCategoryPercent(catKey)}%`;
+}
+function openSoundDetail(item) {
+    showScreen('sound_detail');
+    const title = document.getElementById('sound-detail-title');
+    if (title) title.textContent = `${SOUND_CATEGORIES[soundCategory].label} – ${item.id}`;
+    const play = document.getElementById('btn-sound-play');
+    if (play) {
+        play.onclick = () => playSoundAudio(soundCategory, item.id);
+    }
+    renderSoundDetail(item);
+}
+function renderSoundDetail(item) {
+    const grid = document.getElementById('sound-detail-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    const opts = shuffle(item.options);
+    opts.forEach((opt, idx) => {
+        const card = document.createElement('div');
+        card.className = 'word-card';
+        const imgPath = `./images/sounds/${soundCategory}/${opt}.png`;
+        card.innerHTML = `
+            <div class="word-image-wrap">
+                <img src="${imgPath}" alt="${opt}">
+            </div>
+            <div class="word-label">${opt}</div>
+        `;
+        const imgEl = card.querySelector('img');
+        imgEl.onerror = () => {
+            imgEl.src = generatePlaceholderPng(idx, 'leicht');
+            imgEl.style.display = 'block';
+        };
+        card.addEventListener('click', () => {
+            const correct = opt === item.correct;
+            if (correct) {
+                markSoundCompleted(soundCategory, item.id);
+                showScreen('sound');
+                openSoundCategory(soundCategory);
+            } else {
+                card.classList.remove('correct');
+                setTimeout(() => {
+                    card.classList.remove('correct');
+                }, 600);
+            }
+        });
+        grid.appendChild(card);
+    });
+}
+function markSoundCompleted(catKey, soundId) {
+    const arr = soundProgress[catKey].done;
+    if (!arr.includes(soundId)) arr.push(soundId);
+    saveSoundProgress();
+}
+function playSoundAudio(catKey, soundId) {
+    try {
+        const path = `./audio/sounds/${catKey}/${soundId}.mp3`;
+        const audio = new Audio(path);
+        audio.play();
+    } catch {}
 }
 
 function speakWord(word) {
@@ -1082,5 +1315,3 @@ function handleRetry() {
 }
 
 console.log('📱 App-Code geladen');
- 
-
