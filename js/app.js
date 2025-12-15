@@ -11,7 +11,8 @@ let currentSublevelData = null;
 const screens = {
     login: document.getElementById('login-screen'),
     overview: document.getElementById('overview-screen'),
-    training: document.getElementById('training-screen')
+    training: document.getElementById('training-screen'),
+    story: document.getElementById('story-screen')
 };
 
 // Initialisierung
@@ -97,6 +98,39 @@ function setupEventListeners() {
     speechRecognition.onError = (error) => {
         handleSpeechError(error);
     };
+    
+    const storyCard = document.getElementById('story-card');
+    if (storyCard) {
+        storyCard.addEventListener('click', () => openStoryGame());
+        storyCard.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                openStoryGame();
+            }
+        });
+    }
+    const endStoryBtn = document.getElementById('btn-end-story');
+    if (endStoryBtn) {
+        endStoryBtn.addEventListener('click', () => {
+            showScreen('overview');
+            speechRecognition.onResult = (transcript, confidence) => {
+                handleSpeechResult(transcript, confidence);
+            };
+            document.getElementById('story-text').innerHTML = '';
+        });
+    }
+    const storyMic = document.getElementById('story-mic');
+    if (storyMic) {
+        storyMic.addEventListener('click', () => {
+            document.getElementById('story-recognition-status').textContent = '🎤 Sprich jetzt ein Wort...';
+            storyMic.classList.add('recording');
+            speechRecognition.start();
+        });
+    }
+    const playBtn = document.getElementById('btn-story-play');
+    if (playBtn) playBtn.addEventListener('click', () => playStory());
+    const stopBtn = document.getElementById('btn-story-stop');
+    if (stopBtn) stopBtn.addEventListener('click', () => stopStory());
 }
 
 // Screen Navigation
@@ -153,6 +187,127 @@ function selectChild(childId) {
     showScreen('overview');
     renderProfileCard();
     renderLevelsGrid();
+}
+let storySelected = [];
+const STORY_WORDS = ['Haus','Laus','Maus','Auto','Bauernhof','Giraffe','Spielzeug','Seil','Loch'];
+
+function openStoryGame() {
+    storySelected = [];
+    showScreen('story');
+    renderStoryGame();
+}
+
+function renderStoryGame() {
+    const list = document.getElementById('story-word-list');
+    list.innerHTML = '';
+    STORY_WORDS.forEach((word, idx) => {
+        const card = document.createElement('div');
+        card.className = 'word-card';
+        card.dataset.word = word.toLowerCase();
+        const imgPath = `./images/story/${word.toLowerCase()}.png`;
+        card.innerHTML = `
+            <div class="word-image-wrap">
+                <img src="${imgPath}" alt="${word}">
+            </div>
+            <div class="word-label visually-hidden">${word}</div>
+        `;
+        const imgEl = card.querySelector('img');
+        imgEl.onerror = () => {
+            imgEl.src = generatePlaceholderPng(idx, 'leicht');
+            imgEl.style.display = 'block';
+        };
+        card.addEventListener('click', () => {
+            toggleStorySelection(word);
+        });
+        list.appendChild(card);
+    });
+    speechRecognition.onResult = (transcript) => {
+        handleStorySpeechResult(transcript);
+    };
+    document.getElementById('story-recognition-status').textContent = 'Drücke auf das Mikrofon zum Starten';
+    document.getElementById('story-mic').classList.remove('recording');
+    document.getElementById('story-text').innerHTML = '';
+    document.getElementById('story-info').textContent = 'Wähle oder sprich vier Wörter';
+}
+
+function toggleStorySelection(word) {
+    const w = word.toLowerCase();
+    const idx = storySelected.findIndex(x => x.toLowerCase() === w);
+    if (idx >= 0) {
+        storySelected.splice(idx, 1);
+        highlightStoryWord(w, false);
+    } else {
+        if (storySelected.length < 4) {
+            storySelected.push(word);
+            highlightStoryWord(w, true);
+            if (storySelected.length === 4) {
+                startStory();
+            }
+        }
+    }
+    document.getElementById('story-info').textContent = `Ausgewählt: ${storySelected.length}/4`;
+}
+
+function handleStorySpeechResult(transcript) {
+    document.getElementById('story-mic').classList.remove('recording');
+    const result = speechRecognition.validateRhyme(transcript, STORY_WORDS);
+    document.getElementById('story-recognition-status').innerHTML = `Gesprochen: "<strong>${transcript}</strong>"`;
+    if (result.matchedWord) toggleStorySelection(result.matchedWord);
+}
+
+function highlightStoryWord(word, active) {
+    const list = document.getElementById('story-word-list');
+    const items = list.querySelectorAll('.word-card');
+    items.forEach(el => {
+        if (el.dataset.word === word) {
+            if (active) el.classList.add('correct'); else el.classList.remove('correct');
+        }
+    });
+}
+
+let currentStoryText = '';
+
+function startStory() {
+    currentStoryText = generateStoryFromWords(storySelected);
+    document.getElementById('story-text').textContent = currentStoryText;
+    playStory();
+}
+
+function generateStoryFromWords(words) {
+    const w = words.map(x => x.toLowerCase());
+    const name = currentChild ? currentChild.name : 'Das Kind';
+    const templates = [
+        `${name} machte sich auf den Weg. Vor dem ${w[0]} traf es eine kleine ${w[1]}, die frech kicherte. Zusammen jagten sie eine neugierige ${w[2]}, bis plötzlich ein ${w[3]} hupte. Alle lachten, und am Ende gab es Kakao und Kekse.`,
+        `Heute entdeckt ${name} etwas Neues. Beim ${w[0]} raschelte die ${w[1]} im Gras, die ${w[2]} schnupperte neugierig, und das ${w[3]} blinkte wie ein Stern. Es wurde ein fröhliches Abenteuer mit vielen Witzen und Purzelbäumen.`,
+        `Es war ein sonniger Tag. ${name} sah zuerst ein ${w[0]}, dann kletterte eine ${w[1]} vorbei. Eine ${w[2]} winkte mit dem Schwanz, und ein ${w[3]} fuhr pfeifend vorbei. Alle erzählten lustige Geschichten und machten Quatsch bis die Sonne schlafen ging.`
+    ];
+    const intro = `Es ist Zeit für eine kleine Geschichte.`;
+    const outro = `Und wenn alle müde werden, sagt die Geschichte Gute Nacht und kichert noch einmal.`;
+    const mid = templates[Math.floor(Math.random() * templates.length)];
+    const extra = `Am Ende gibt es eine große Umarmung und ein fröhliches Lächeln.`;
+    const text = `${intro} ${mid} ${extra} ${outro}`;
+    return text;
+}
+
+function playStory() {
+    if (!currentStoryText || !currentStoryText.length) return;
+    if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+        return;
+    }
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(currentStoryText);
+    utter.lang = 'de-DE';
+    const voices = window.speechSynthesis.getVoices();
+    const preferred = voices.find(v => v.lang && v.lang.startsWith('de') && /Google|Microsoft|Female|frau/i.test(v.name));
+    utter.voice = preferred || voices.find(v => v.lang && v.lang.startsWith('de')) || null;
+    utter.rate = 1;
+    utter.pitch = 1.1;
+    window.speechSynthesis.speak(utter);
+}
+
+function stopStory() {
+    window.speechSynthesis.cancel();
 }
 function renderProfileCard() {
     const container = document.getElementById('profile-card');
@@ -503,4 +658,5 @@ function handleRetry() {
 }
 
 console.log('📱 App-Code geladen');
+
 
