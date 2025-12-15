@@ -383,33 +383,60 @@ function generateProceduralStory(words) {
         const d = dict[k] || {def:'das', noun:k};
         return `${d.def} ${d.noun}`;
     };
-    const verbs = ['lacht', 'tanzt', 'flüstert', 'staunt', 'kichert', 'springt', 'malt', 'träumt', 'hüpft', 'summt'];
-    const adjs = ['neugierig', 'freundlich', 'witzig', 'bunt', 'glitzernd', 'sanft', 'fröhlich', 'mutig'];
-    const advs = ['leise', 'fröhlich', 'plötzlich', 'ganz', 'eben', 'oft', 'manchmal', 'gleich'];
-    const joins = ['Dann', 'Plötzlich', 'Danach', 'Nebenbei', 'Kurz darauf', 'Am Ende', 'Später'];
+    const actions = {
+        haus: ['leuchtet warm', 'steht ganz still', 'knarzt leise'],
+        laus: ['krabbelt flink', 'kichert leise', 'versteckt sich kurz'],
+        maus: ['flitzt schnell', 'kichert frech', 'huscht vorbei'],
+        auto: ['hupt freundlich', 'fährt langsam vorbei', 'blinkt hell'],
+        bauernhof: ['duftet nach Heu', 'ist heute sehr ruhig', 'klingt nach Musik'],
+        giraffe: ['hüpft fröhlich', 'streckt den Hals weit', 'lacht leise'],
+        spielzeug: ['funkelt bunt', 'klappert lustig', 'dreht sich im Kreis'],
+        seil: ['schwingt sanft', 'zittert ein bisschen', 'liegt ganz ruhig'],
+        loch: ['ist tief', 'ist geheimnisvoll', 'wartet still']
+    };
+    const starters = ['Plötzlich', 'Kurz darauf', 'Danach', 'Später', 'Zwischendurch'];
+    const groupLines = [
+        'Dann erzählen alle einen Witz.',
+        'Kurz darauf klatschen alle in die Hände.',
+        'Später zeichnen alle ein Herz in die Luft.',
+        'Am Ende machen alle einen Purzelbaum.'
+    ];
+    const tokenizeAction = (s) => {
+        const parts = s.split(' ');
+        return { verb: parts[0], tail: parts.slice(1).join(' ') };
+    };
+    const sentenceForKey = (k) => {
+        const phrase = artNoun(k);
+        const act = randPick(actions[k] || ['ist fröhlich']);
+        const tok = tokenizeAction(act);
+        const useStarter = Math.random() < 0.5;
+        if (useStarter) {
+            const st = randPick(starters);
+            return `${st} ${tok.verb} ${phrase}${tok.tail ? ' ' + tok.tail : ''}.`;
+        }
+        return `${cap(phrase)} ${tok.verb}${tok.tail ? ' ' + tok.tail : ''}.`;
+    };
     const name = currentChild ? currentChild.name : 'Das Kind';
-    const subjects = lower.map(k => artNoun(k));
-    const pool = [];
-    for (let i=0;i<12;i++){
-        const subj = randPick(subjects);
-        const v = randPick(verbs);
-        const a = randPick(adjs);
-        const adv = randPick(advs);
-        const j = randPick(joins);
-        const sentence = `${cap(subj)} ${adv} ${v} ${randPick(['im Garten','auf dem Weg','neben dem Zaun','unter der Sonne','beim Spielen'])} und wirkt ${a}. ${j} ${randPick(['erzählen alle einen Witz','klatschen alle in die Hände','machen alle einen Purzelbaum','zeichnen ein Herz in die Luft'])}.`;
-        pool.push(sentence);
-    }
-    // Sicherstellen: jedes der ausgewählten Wörter kommt mindestens einmal explizit vor
-    const ensured = lower.map(k => {
-        const s = `${cap(artNoun(k))} hat heute besonders gute Laune und ${randPick(verbs)} ${randPick(['im Kreis','wie ein Profi','wie ein Wirbelwind'])}.`;
-        return s;
-    });
-    // Story zusammenstellen und kürzen
     const intro = `${name} erlebt heute etwas Wunderbares.`;
+    const ensured = lower.map(k => sentenceForKey(k));
+    const dialogTemplates = [
+        (p) => `„Guten Morgen!“ sagt ${p}.`,
+        (p) => `„Komm, wir spielen,“ sagt ${p}.`,
+        (p) => `„Ich helfe dir,“ flüstert ${p}.`,
+        (p) => `„Das ist lustig!“ ruft ${p}.`,
+        (p) => `„Magst du mitkommen?“ fragt ${p}.`
+    ];
+    const extras = [];
+    for (let i = 0; i < 4; i++) {
+        const k = randPick(lower);
+        const p = artNoun(k);
+        extras.push(sentenceForKey(k));
+        extras.push(randPick(dialogTemplates)(p));
+        if (i % 2 === 1) extras.push(randPick(groupLines));
+    }
     const outro = `Zum Schluss gibt es eine Umarmung und ein Lächeln.`;
-    const all = [intro, ...ensured, ...pool, outro];
+    const all = [intro, ...ensured, ...extras, outro];
     let text = all.join(' ');
-    // leichte Kürzung, zielt auf ~160–220 Wörter
     const wordsCount = text.split(/\s+/).length;
     if (wordsCount > 230) {
         text = text.split(/\s+/).slice(0, 220).join(' ') + '.';
@@ -419,10 +446,13 @@ function generateProceduralStory(words) {
 
 async function generateCreativeStoryOpenAI(words) {
     const name = currentChild ? currentChild.name : 'Ein Kind';
-    const prompt = `Schreibe eine kurze, kindgerechte, kreative und witzige Geschichte auf Deutsch.
-Sie soll warm klingen, flüssig vorgelesen werden können und maximal etwa eine halbe DIN-A4 Seite in Arial 11 sein (~150–220 Wörter).
-Baue die folgenden Begriffe natürlich und grammatikalisch korrekt ein (richtige Artikel!): ${words.join(', ')}.
-Nenne das Kind "${name}" in der Geschichte. Vermeide Aufzählungs-Templates; erfinde frei und natürlich wirkende Sätze.`;
+    const prompt = `Schreibe eine kurze, kindgerechte, kreative und witzige Geschichte auf Deutsch mit warmem Ton.
+Maximal etwa eine halbe DIN-A4 Seite (~150–220 Wörter).
+Baue die Begriffe natürlich und grammatikalisch korrekt ein (richtige Artikel): ${words.join(', ')}.
+Nutze 3–5 kurze Dialogzeilen mit „…“, und Formulierungen wie „sagt“, „fragt“, „ruft“, „flüstert“.
+Vermeide künstliche Aufzählungen, vermeide Wörter wie „wirkt“. 
+Klarer Satzbau, pädagogisch wertvoll, ruhig und freundlich. 
+Das Kind heißt "${name}".`;
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -432,10 +462,10 @@ Nenne das Kind "${name}" in der Geschichte. Vermeide Aufzählungs-Templates; erf
         body: JSON.stringify({
             model: 'gpt-4o-mini',
             messages: [
-                {role:'system', content:'Du bist eine warmherzige Erzählstimme, die kindgerechte, humorvolle Kurzgeschichten in perfektem Deutsch schreibt.'},
+                {role:'system', content:'Du schreibst kindgerechte, humorvolle Kurzgeschichten mit korrekter Grammatik und warmem Ton.'},
                 {role:'user', content: prompt}
             ],
-            temperature: 0.9
+            temperature: 0.85
         })
     });
     if (!res.ok) throw new Error('OpenAI story generation failed');
@@ -462,8 +492,8 @@ function playStory() {
         utter.lang = 'de-DE';
         const voice = pickBestVoice();
         if (voice) utter.voice = voice;
-        utter.rate = 1;
-        utter.pitch = 1.05;
+        utter.rate = 0.9;
+        utter.pitch = 1.02;
         window.speechSynthesis.speak(utter);
     }
 }
@@ -536,6 +566,7 @@ async function synthesizeWithOpenAI(text) {
         const blob = await res.blob();
         const url = URL.createObjectURL(blob);
         currentAudio = new Audio(url);
+        currentAudio.playbackRate = 0.9;
         currentAudio.play();
         currentAudio.onended = () => {
             URL.revokeObjectURL(url);
@@ -902,9 +933,3 @@ function handleRetry() {
 }
 
 console.log('📱 App-Code geladen');
-
-
-
-
-
-
