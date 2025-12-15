@@ -1,4 +1,4 @@
- 
+  
 
 class SpeechRecognitionModule {
     constructor() {
@@ -7,7 +7,7 @@ class SpeechRecognitionModule {
         this.onResult = null;
         this.onError = null;
         this.isReadingMode = false;
-     
+        
         // KONFIGURATION - HIER ANPASSBAR
         this.SIMILARITY_THRESHOLD = 0.8; // Basisschwelle
         this.LANGUAGE = 'de-DE';
@@ -41,10 +41,7 @@ class SpeechRecognitionModule {
 
         this.recognition.onresult = (event) => {
             console.log('📝 Speech Recognition Ergebnis:', event);
-        
-            }
-        };
-          if (this.isReadingMode) {
+            if (this.isReadingMode) {
                 for (let i = event.resultIndex; i < event.results.length; i++) {
                     const result = event.results[i];
                     // Nur finale Ergebnisse verarbeiten, um Spam zu vermeiden
@@ -69,7 +66,7 @@ class SpeechRecognitionModule {
                 const confidence = bestAlt.confidence;
                 console.log(`Erkanntes Wort: "${transcript}" (Konfidenz: ${(confidence * 100).toFixed(1)}%)`);
                 if (this.onResult) this.onResult(transcript, confidence);
-                }
+            }
         };
 
         this.recognition.onerror = (event) => {
@@ -136,6 +133,7 @@ class SpeechRecognitionModule {
         // Längere Session ohne Autostop
         this.MAX_RECORDING_TIME = this.isReadingMode ? 30000 : 5000;
     }
+
     /**
      * REIM-VALIDIERUNG
      * ================
