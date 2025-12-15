@@ -1,4 +1,4 @@
-  
+ 
 
 // State
 let currentChild = null;
@@ -135,25 +135,6 @@ function setupEventListeners() {
     if (playBtn) playBtn.addEventListener('click', () => playStory());
     const stopBtn = document.getElementById('btn-story-stop');
     if (stopBtn) stopBtn.addEventListener('click', () => stopStory());
-    const providerSelect = document.getElementById('tts-provider-select');
-    if (providerSelect) {
-        providerSelect.addEventListener('change', () => {
-            const p = providerSelect.value;
-            localStorage.setItem('tts_provider', p);
-            const openaiVoice = document.getElementById('openai-voice');
-            const openaiKey = document.getElementById('openai-key');
-            const voiceSelect = document.getElementById('voice-select');
-            if (p === 'openai') {
-                openaiVoice.style.display = 'inline-block';
-                openaiKey.style.display = 'inline-block';
-                voiceSelect.style.display = 'none';
-            } else {
-                openaiVoice.style.display = 'none';
-                openaiKey.style.display = 'none';
-                voiceSelect.style.display = 'inline-block';
-            }
-        });
-    }
 }
 
 // Screen Navigation
@@ -213,13 +194,11 @@ function selectChild(childId) {
 }
 
 let storySelected = [];
-const STORY_WORDS = ['Haus','Laus','Maus','Auto','Bauernhof','Giraffe','Spielzeug','Seil','Loch'];
-let availableVoices = [];
-let selectedVoiceName = localStorage.getItem('story_voice_name') || '';
-let currentAudio = null;
-let ttsProvider = localStorage.getItem('tts_provider') || 'web';
-let openAiVoiceName = localStorage.getItem('openai_voice_name') || 'aria';
+const STORY_WORDS = ['Haus','Laus','Maus','Auto','Bauernhof','Giraffe','Spielzeug','Seil','Loch','Papa','Mama','Turm','Prinzessin','Ritter','Pferd','Einhorn','Drache'];
 let openAiKey = localStorage.getItem('openai_key') || '';
+let readingActive = false;
+let readingShown = new Set();
+let readingTargets = [];
 
 function openStoryGame() {
     storySelected = [];
@@ -258,28 +237,8 @@ function renderStoryGame() {
     document.getElementById('story-mic').classList.remove('recording');
     document.getElementById('story-text').innerHTML = '';
     document.getElementById('story-info').textContent = 'Wähle oder sprich vier Wörter';
-    loadVoices();
-    populateVoiceSelect();
-    const providerSelect = document.getElementById('tts-provider-select');
-    const openaiVoice = document.getElementById('openai-voice');
     const openaiKeyInput = document.getElementById('openai-key');
-    providerSelect.value = ttsProvider;
-    openaiVoice.value = openAiVoiceName;
     openaiKeyInput.value = openAiKey;
-    const voiceSelect = document.getElementById('voice-select');
-    if (ttsProvider === 'openai') {
-        openaiVoice.style.display = 'inline-block';
-        openaiKeyInput.style.display = 'inline-block';
-        voiceSelect.style.display = 'none';
-    } else {
-        openaiVoice.style.display = 'none';
-        openaiKeyInput.style.display = 'none';
-        voiceSelect.style.display = 'inline-block';
-    }
-    openaiVoice.addEventListener('change', () => {
-        openAiVoiceName = openaiVoice.value || 'aria';
-        localStorage.setItem('openai_voice_name', openAiVoiceName);
-    });
     openaiKeyInput.addEventListener('change', () => {
         openAiKey = openaiKeyInput.value || '';
         localStorage.setItem('openai_key', openAiKey);
@@ -326,16 +285,17 @@ let currentStoryText = '';
 async function startStory() {
     document.getElementById('story-text').textContent = 'Die Geschichte wird gerade geschrieben...';
     try {
-        if (ttsProvider === 'openai' && openAiKey) {
-            currentStoryText = await generateCreativeStoryOpenAI(storySelected);
+        if (!openAiKey) {
+            currentStoryText = 'Bitte gib deinen OpenAI API Key ein, um die Geschichte zu erzeugen.';
         } else {
-            currentStoryText = generateProceduralStory(storySelected);
+            currentStoryText = await generateCreativeStoryOpenAI(storySelected);
         }
     } catch (e) {
-        currentStoryText = generateProceduralStory(storySelected);
+        currentStoryText = 'Die Geschichte konnte gerade nicht erzeugt werden.';
     }
     document.getElementById('story-text').textContent = currentStoryText;
-    playStory();
+    readingShown.clear();
+    readingTargets = Array.from(new Set([...storySelected.map(w => w.toLowerCase()), ...STORY_WORDS.map(w => w.toLowerCase())]));
 }
 
 function generateStoryFromWords(words) {
@@ -377,7 +337,10 @@ function generateProceduralStory(words) {
     const dict = {
         haus: {def:'das', noun:'Haus'}, laus: {def:'die', noun:'Laus'}, maus: {def:'die', noun:'Maus'},
         auto: {def:'das', noun:'Auto'}, bauernhof: {def:'der', noun:'Bauernhof'}, giraffe: {def:'die', noun:'Giraffe'},
-        spielzeug: {def:'das', noun:'Spielzeug'}, seil: {def:'das', noun:'Seil'}, loch: {def:'das', noun:'Loch'}
+        spielzeug: {def:'das', noun:'Spielzeug'}, seil: {def:'das', noun:'Seil'}, loch: {def:'das', noun:'Loch'},
+        papa: {def:'der', noun:'Papa'}, mama: {def:'die', noun:'Mama'}, turm: {def:'der', noun:'Turm'},
+        prinzessin: {def:'die', noun:'Prinzessin'}, ritter: {def:'der', noun:'Ritter'}, pferd: {def:'das', noun:'Pferd'},
+        einhorn: {def:'das', noun:'Einhorn'}, drache: {def:'der', noun:'Drache'}
     };
     const artNoun = (k) => {
         const d = dict[k] || {def:'das', noun:k};
@@ -436,7 +399,16 @@ function generateProceduralStory(words) {
     }
     const outro = `Zum Schluss gibt es eine Umarmung und ein Lächeln.`;
     const all = [intro, ...ensured, ...extras, outro];
-    let text = all.join(' ');
+    const seen = new Set();
+    const unique = [];
+    for (const s of all) {
+        const k = s.trim();
+        if (!seen.has(k)) {
+            seen.add(k);
+            unique.push(s);
+        }
+    }
+    let text = unique.join(' ');
     const wordsCount = text.split(/\s+/).length;
     if (wordsCount > 230) {
         text = text.split(/\s+/).slice(0, 220).join(' ') + '.';
@@ -445,14 +417,12 @@ function generateProceduralStory(words) {
 }
 
 async function generateCreativeStoryOpenAI(words) {
-    const name = currentChild ? currentChild.name : 'Ein Kind';
-    const prompt = `Schreibe eine kurze, kindgerechte, kreative und witzige Geschichte auf Deutsch mit warmem Ton.
-Maximal etwa eine halbe DIN-A4 Seite (~150–220 Wörter).
-Baue die Begriffe natürlich und grammatikalisch korrekt ein (richtige Artikel): ${words.join(', ')}.
-Nutze 3–5 kurze Dialogzeilen mit „…“, und Formulierungen wie „sagt“, „fragt“, „ruft“, „flüstert“.
-Vermeide künstliche Aufzählungen, vermeide Wörter wie „wirkt“. 
-Klarer Satzbau, pädagogisch wertvoll, ruhig und freundlich. 
-Das Kind heißt "${name}".`;
+    const base = words.join(', ');
+    const extra = ['Papa','Mama','Turm','Prinzessin','Ritter','Pferd','Einhorn','Drache'].join(', ');
+    const prompt = `Erstelle eine kindgerechte Geschichte mit der Länge 300–350 Zeichen.
+Baue die Begriffe ein: ${base}. Erweitere um: ${extra}.
+Schreibe im Stil einer Kinderbuchautorin, ohne feste Bausteine, jedes Mal einzigartig.
+Sprachebene passend für 4–6-Jährige, klare, korrekte Sätze.`;
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -462,10 +432,10 @@ Das Kind heißt "${name}".`;
         body: JSON.stringify({
             model: 'gpt-4o-mini',
             messages: [
-                {role:'system', content:'Du schreibst kindgerechte, humorvolle Kurzgeschichten mit korrekter Grammatik und warmem Ton.'},
+                {role:'system', content:'Du bist eine erfahrene Kinderbuchautorin. Du schreibst kurze, kindgerechte, einzigartige Geschichten in warmem Ton mit korrekter Grammatik.'},
                 {role:'user', content: prompt}
             ],
-            temperature: 0.85
+            temperature: 0.95
         })
     });
     if (!res.ok) throw new Error('OpenAI story generation failed');
@@ -476,111 +446,47 @@ Das Kind heißt "${name}".`;
 
 function playStory() {
     if (!currentStoryText || !currentStoryText.length) return;
-    if (window.speechSynthesis.paused) {
-        window.speechSynthesis.resume();
-        return;
-    }
-    if (ttsProvider === 'openai' && openAiKey) {
-        if (currentAudio) {
-            currentAudio.pause();
-            currentAudio = null;
+    readingActive = true;
+    document.getElementById('story-recognition-status').textContent = '🎤 Vorlesen aktiv – sprich die Wörter der Geschichte';
+    document.getElementById('story-mic').classList.add('recording');
+    speechRecognition.onResult = (transcript) => {
+        handleReadingSpeech(transcript);
+        if (readingActive) {
+            setTimeout(() => speechRecognition.start(), 200);
         }
-        synthesizeWithOpenAI(currentStoryText);
-    } else {
-        window.speechSynthesis.cancel();
-        const utter = new SpeechSynthesisUtterance(currentStoryText);
-        utter.lang = 'de-DE';
-        const voice = pickBestVoice();
-        if (voice) utter.voice = voice;
-        utter.rate = 0.9;
-        utter.pitch = 1.02;
-        window.speechSynthesis.speak(utter);
-    }
+    };
+    speechRecognition.start();
 }
 
 function stopStory() {
-    window.speechSynthesis.cancel();
-    if (currentAudio) {
-        currentAudio.pause();
-        currentAudio.currentTime = 0;
-    }
+    readingActive = false;
+    speechRecognition.stop();
+    document.getElementById('story-mic').classList.remove('recording');
+    document.getElementById('story-recognition-status').textContent = 'Vorlesen gestoppt';
 }
 
-function loadVoices() {
-    availableVoices = window.speechSynthesis.getVoices();
-}
-
-if (window.speechSynthesis && typeof window.speechSynthesis.onvoiceschanged !== 'undefined') {
-    window.speechSynthesis.onvoiceschanged = () => {
-        loadVoices();
-        populateVoiceSelect();
+function showLargeImageForWord(word) {
+    const container = document.getElementById('story-large-image');
+    const img = document.createElement('img');
+    const path = `./images/story/${word.toLowerCase()}.png`;
+    img.src = path;
+    img.alt = word;
+    img.className = 'fade-in';
+    img.onerror = () => {
+        img.src = generatePlaceholderPng(0, 'leicht');
     };
+    container.innerHTML = '';
+    container.appendChild(img);
 }
 
-function populateVoiceSelect() {
-    const select = document.getElementById('voice-select');
-    if (!select) return;
-    select.innerHTML = '';
-    const deVoices = availableVoices.filter(v => v.lang && v.lang.startsWith('de'));
-    const voicesToShow = deVoices.length ? deVoices : availableVoices;
-    voicesToShow.forEach(v => {
-        const opt = document.createElement('option');
-        opt.value = v.name;
-        opt.textContent = `${v.name} (${v.lang})`;
-        if (selectedVoiceName && v.name === selectedVoiceName) opt.selected = true;
-        select.appendChild(opt);
-    });
-    select.addEventListener('change', () => {
-        selectedVoiceName = select.value;
-        localStorage.setItem('story_voice_name', selectedVoiceName);
-    });
-}
-
-function pickBestVoice() {
-    loadVoices();
-    if (selectedVoiceName) {
-        const match = availableVoices.find(v => v.name === selectedVoiceName);
-        if (match) return match;
-    }
-    const deVoices = availableVoices.filter(v => v.lang && v.lang.startsWith('de'));
-    const femaleRegex = /(Female|frau|Hedda|Katja|Maren|Anna|Lea|Google Deutsch|Microsoft Hedda)/i;
-    const preferred = deVoices.find(v => femaleRegex.test(v.name)) || deVoices[0];
-    return preferred || availableVoices[0] || null;
-}
-
-async function synthesizeWithOpenAI(text) {
-    try {
-        const res = await fetch('https://api.openai.com/v1/audio/speech', {
-            method: 'POST',
-            headers: {
-                'Authorization': 'Bearer ' + openAiKey,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                model: 'gpt-4o-mini-tts',
-                voice: openAiVoiceName || 'aria',
-                input: text,
-                format: 'mp3'
-            })
-        });
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        currentAudio = new Audio(url);
-        currentAudio.playbackRate = 0.9;
-        currentAudio.play();
-        currentAudio.onended = () => {
-            URL.revokeObjectURL(url);
-            currentAudio = null;
-        };
-    } catch (e) {
-        window.speechSynthesis.cancel();
-        const utter = new SpeechSynthesisUtterance(text);
-        utter.lang = 'de-DE';
-        const voice = pickBestVoice();
-        if (voice) utter.voice = voice;
-        utter.rate = 1;
-        utter.pitch = 1.05;
-        window.speechSynthesis.speak(utter);
+function handleReadingSpeech(transcript) {
+    const res = speechRecognition.validateRhyme(transcript, readingTargets);
+    if (res.matchedWord && !readingShown.has(res.matchedWord.toLowerCase())) {
+        readingShown.add(res.matchedWord.toLowerCase());
+        showLargeImageForWord(res.matchedWord);
+        if (readingShown.size >= readingTargets.length) {
+            stopStory();
+        }
     }
 }
 function renderProfileCard() {
