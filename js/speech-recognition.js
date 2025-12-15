@@ -1,4 +1,4 @@
-  
+   
 
 class SpeechRecognitionModule {
     constructor() {
@@ -7,6 +7,7 @@ class SpeechRecognitionModule {
         this.onResult = null;
         this.onError = null;
         this.isReadingMode = false;
+        this.USE_DYNAMIC_THRESHOLD = true;
         
         // KONFIGURATION - HIER ANPASSBAR
         this.SIMILARITY_THRESHOLD = 0.8; // Basisschwelle
@@ -131,7 +132,12 @@ class SpeechRecognitionModule {
         // In Lesen-Modus etwas toleranter
         this.SIMILARITY_THRESHOLD = this.isReadingMode ? 0.75 : 0.8;
         // Längere Session ohne Autostop
-        this.MAX_RECORDING_TIME = this.isReadingMode ? 30000 : 5000;
+        this.MAX_RECORDING_TIME = this.isReadingMode ? 120000 : 5000;
+    }
+
+    configureThreshold(threshold, useDynamic) {
+        if (typeof threshold === 'number') this.SIMILARITY_THRESHOLD = threshold;
+        if (typeof useDynamic === 'boolean') this.USE_DYNAMIC_THRESHOLD = useDynamic;
     }
 
     /**
@@ -162,11 +168,13 @@ class SpeechRecognitionModule {
             }
         });
 
-        // Dynamische Schwelle: kurze Wörter benötigen höhere Ähnlichkeit
+        // Dynamische Schwelle optional
         const len = Math.max(spokenWord.length, (bestMatch || '').length);
         let required = this.SIMILARITY_THRESHOLD;
-        if (len <= 3) required = Math.max(required, 0.85);
-        if (len >= 8) required = Math.min(required, 0.75);
+        if (this.USE_DYNAMIC_THRESHOLD) {
+            if (len <= 3) required = Math.max(required, 0.85);
+            if (len >= 8) required = Math.min(required, 0.75);
+        }
         
         let isCorrect = maxSimilarity >= required;
         
