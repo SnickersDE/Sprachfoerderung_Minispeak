@@ -243,6 +243,8 @@ function renderStoryGame() {
         openAiKey = openaiKeyInput.value || '';
         localStorage.setItem('openai_key', openAiKey);
     });
+  const seq = document.getElementById('story-sequence');
+    if (seq) seq.innerHTML = '';
 }
 
 function toggleStorySelection(word) {
@@ -295,7 +297,7 @@ async function startStory() {
     }
     document.getElementById('story-text').textContent = currentStoryText;
     readingShown.clear();
-    readingTargets = Array.from(new Set([...storySelected.map(w => w.toLowerCase()), ...STORY_WORDS.map(w => w.toLowerCase())]));
+    readingTargets = extractTargetsFromStory(currentStoryText, STORY_WORDS);
 }
 
 function generateStoryFromWords(words) {
@@ -449,11 +451,9 @@ function playStory() {
     readingActive = true;
     document.getElementById('story-recognition-status').textContent = '🎤 Vorlesen aktiv – sprich die Wörter der Geschichte';
     document.getElementById('story-mic').classList.add('recording');
+    speechRecognition.setReadingMode(true);
     speechRecognition.onResult = (transcript) => {
         handleReadingSpeech(transcript);
-        if (readingActive) {
-            setTimeout(() => speechRecognition.start(), 200);
-        }
     };
     speechRecognition.start();
 }
@@ -461,12 +461,18 @@ function playStory() {
 function stopStory() {
     readingActive = false;
     speechRecognition.stop();
+    speechRecognition.setReadingMode(false);
     document.getElementById('story-mic').classList.remove('recording');
     document.getElementById('story-recognition-status').textContent = 'Vorlesen gestoppt';
+    const seq = document.getElementById('story-sequence');
+    if (seq) seq.innerHTML = '';
+    readingShown.clear();
+    const list = document.getElementById('story-word-list');
+    list.querySelectorAll('.word-card.correct').forEach(el => el.classList.remove('correct'));
 }
-
-function showLargeImageForWord(word) {
-    const container = document.getElementById('story-large-image');
+    function appendSequenceImage(word) {
+    const container = document.getElementById('story-sequence');
+    if (!container) return;
     const img = document.createElement('img');
     const path = `./images/story/${word.toLowerCase()}.png`;
     img.src = path;
@@ -475,20 +481,34 @@ function showLargeImageForWord(word) {
     img.onerror = () => {
         img.src = generatePlaceholderPng(0, 'leicht');
     };
-    container.innerHTML = '';
     container.appendChild(img);
 }
 
 function handleReadingSpeech(transcript) {
-    const res = speechRecognition.validateRhyme(transcript, readingTargets);
+    const res = speechRecognition.validateRhyme(transcript, readingTargets.length ? readingTargets : STORY_WORDS);
     if (res.matchedWord && !readingShown.has(res.matchedWord.toLowerCase())) {
         readingShown.add(res.matchedWord.toLowerCase());
-        showLargeImageForWord(res.matchedWord);
+        appendSequenceImage(res.matchedWord);
+        highlightStoryWord(res.matchedWord.toLowerCase(), true);
         if (readingShown.size >= readingTargets.length) {
             stopStory();
         }
     }
 }
+
+function extractTargetsFromStory(text, dictionary) {
+    const lower = text.toLowerCase();
+    const seen = new Set();
+    const ordered = [];
+    dictionary.forEach(w => {
+        const lw = w.toLowerCase();
+        if (lower.includes(lw) && !seen.has(lw)) {
+            seen.add(lw);
+            ordered.push(lw);
+        }
+    });
+    return ordered;
+} 
 function renderProfileCard() {
     const container = document.getElementById('profile-card');
     if (!container || !currentChild) return;
@@ -839,3 +859,4 @@ function handleRetry() {
 }
 
 console.log('📱 App-Code geladen');
+
