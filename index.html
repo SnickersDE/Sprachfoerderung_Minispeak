@@ -11,8 +11,8 @@
     <!-- Login Screen -->
     <div id="login-screen" class="screen active">
         <div class="container">
-            <h1> Die Sprachwerkstatt</h1>
-            <p class="subtitle">Mit wem spielst und lernst du heute?</p>
+            <h1>🎯 Sprachförderung-Demo</h1>
+            <p class="subtitle">Wähle ein Kind aus</p>
             <div class="breadcrumb">Start</div>
             <div id="children-list" class="children-grid"></div>
         </div>
@@ -45,6 +45,15 @@
                 <p>Wähle vier Bilder und höre eine kurze, lustige Geschichte.</p>
                 <button id="btn-story-start" class="btn btn-primary">Start</button>
             </div>
+            <div id="memory-card" class="level-card" role="button" tabindex="0" aria-label="Auditives Reim-Memory öffnen">
+                <div class="level-header">
+                    <div class="level-icon">🧠</div>
+                    <div class="difficulty-badge difficulty-leicht">Spiel</div>
+                </div>
+                <h3>Auditives Reim-Memory</h3>
+                <p>Höre ein Zielwort und finde passende Reime.</p>
+                <button id="btn-memory-start" class="btn btn-primary">Start</button>
+            </div>
             <div id="levels-grid" class="levels-grid"></div>
         </div>
     </div>
@@ -53,26 +62,46 @@
         <div class="container">
             <div class="header">
                 <div>
-                    <h2>Geschichten Spiel</h2>
-                    <p id="story-info">Wähle oder sprich vier Wörter</p>
+                    <h2>Wortschatz-Spiel</h2>
+                    <p id="story-info">Tippe ein Bild und ich spreche das Wort</p>
                 </div>
                 <button id="btn-end-story" class="btn btn-secondary">Zurück</button>
             </div>
-            <div class="breadcrumb">Start → Übersicht → Geschichten</div>
-            <div id="story-word-list" class="word-list"></div>
+            <div class="breadcrumb">Start → Übersicht → Wortschatz</div>
             <div class="microphone-section">
                 <div class="mic-circle" id="story-mic">
                     <div id="mic-icon">🎤</div>
                 </div>
-                <p id="story-recognition-status" class="status-text" aria-live="polite">Drücke auf das Mikrofon zum Starten</p>
+                <p id="story-recognition-status" class="status-text" aria-live="polite">Tippe ein Bild, dann spreche ich das Wort</p>
             </div>
-            <div class="story-controls action-buttons">
-                <input id="openai-key" type="password" class="voice-select" placeholder="OpenAI API Key">
-                <button id="btn-story-play" class="btn btn-primary">▶️ Mit vorlesen beginnen</button>
-                <button id="btn-story-stop" class="btn btn-secondary">⏹️ Vorlesen stoppen</button>
+            <div id="story-word-list" class="word-list"></div>
+            <div class="action-buttons">
+                <button id="btn-next-level" class="btn btn-primary" style="display:none;">Weiter</button>
             </div>
-            <div id="story-sequence" class="word-image-container" aria-live="polite"></div>
-            <div id="story-text" class="story-text"></div>
+        </div>
+    </div>
+    <div id="memory-screen" class="screen">
+        <div class="container">
+            <div class="header">
+                <div>
+                    <h2>Auditives Reim-Memory</h2>
+                    <p id="memory-info">Höre das Zielwort und finde Reime</p>
+                </div>
+                <button id="btn-end-memory" class="btn btn-secondary">Zurück</button>
+            </div>
+            <div class="breadcrumb">Start → Übersicht → Reim-Memory</div>
+            <div class="action-buttons">
+                <label for="memory-level" style="align-self:center;">Level</label>
+                <select id="memory-level" class="voice-select">
+                    <option value="1">Level 1</option>
+                    <option value="2">Level 2</option>
+                    <option value="3">Level 3</option>
+                </select>
+                <button id="btn-memory-play" class="btn btn-primary">▶️ Zielwort abspielen</button>
+                <button id="btn-memory-reset" class="btn btn-secondary">🔄 Neue Runde</button>
+            </div>
+            <div id="memory-status" class="info-box"><p>Gefundene Reime: 0/0</p></div>
+            <div id="memory-grid" class="word-list"></div>
         </div>
     </div>
     <!-- Training Screen -->
