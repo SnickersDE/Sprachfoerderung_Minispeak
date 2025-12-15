@@ -36,10 +36,41 @@
             </div>
             <div class="breadcrumb">Start → Übersicht</div>
             <div id="profile-card" class="profile-card"></div>
+            <div id="story-card" class="level-card" role="button" tabindex="0" aria-label="Geschichten-Spiel öffnen">
+                <div class="level-header">
+                    <div class="level-icon">📖</div>
+                    <div class="difficulty-badge difficulty-leicht">Spiel</div>
+                </div>
+                <h3>Geschichten Spiel</h3>
+                <p>Wähle vier Bilder und höre eine kurze, lustige Geschichte.</p>
+            </div>
             <div id="levels-grid" class="levels-grid"></div>
         </div>
     </div>
-
+ <div id="story-screen" class="screen">
+        <div class="container">
+            <div class="header">
+                <div>
+                    <h2>Geschichten Spiel</h2>
+                    <p id="story-info">Wähle oder sprich vier Wörter</p>
+                </div>
+                <button id="btn-end-story" class="btn btn-secondary">Zurück</button>
+            </div>
+            <div class="breadcrumb">Start → Übersicht → Geschichten</div>
+            <div id="story-word-list" class="word-list"></div>
+            <div class="microphone-section">
+                <div class="mic-circle" id="story-mic">
+                    <div id="mic-icon">🎤</div>
+                </div>
+                <p id="story-recognition-status" class="status-text" aria-live="polite">Drücke auf das Mikrofon zum Starten</p>
+            </div>
+            <div class="story-controls action-buttons">
+                <button id="btn-story-play" class="btn btn-primary">▶️ Vorlesen</button>
+                <button id="btn-story-stop" class="btn btn-secondary">⏹️ Stop</button>
+            </div>
+            <div id="story-text" class="story-text"></div>
+        </div>
+    </div>
     <!-- Training Screen -->
     <div id="training-screen" class="screen">
         <div class="container">
