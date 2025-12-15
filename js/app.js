@@ -135,7 +135,26 @@ function setupEventListeners() {
     if (playBtn) playBtn.addEventListener('click', () => playStory());
     const stopBtn = document.getElementById('btn-story-stop');
     if (stopBtn) stopBtn.addEventListener('click', () => stopStory());
-}
+}  
+    const providerSelect = document.getElementById('tts-provider-select');
+    if (providerSelect) {
+        providerSelect.addEventListener('change', () => {
+            const p = providerSelect.value;
+            localStorage.setItem('tts_provider', p);
+            const openaiVoice = document.getElementById('openai-voice');
+            const openaiKey = document.getElementById('openai-key');
+            const voiceSelect = document.getElementById('voice-select');
+            if (p === 'openai') {
+                openaiVoice.style.display = 'inline-block';
+                openaiKey.style.display = 'inline-block';
+                voiceSelect.style.display = 'none';
+            } else {
+                openaiVoice.style.display = 'none';
+                openaiKey.style.display = 'none';
+                voiceSelect.style.display = 'inline-block';
+            }
+        });
+    }
 
 // Screen Navigation
 function showScreen(screenName) {
@@ -192,10 +211,15 @@ function selectChild(childId) {
     renderProfileCard();
     renderLevelsGrid();
 }
+
 let storySelected = [];
 const STORY_WORDS = ['Haus','Laus','Maus','Auto','Bauernhof','Giraffe','Spielzeug','Seil','Loch'];
 let availableVoices = [];
 let selectedVoiceName = localStorage.getItem('story_voice_name') || '';
+let currentAudio = null;
+let ttsProvider = localStorage.getItem('tts_provider') || 'web';
+let openAiVoiceName = localStorage.getItem('openai_voice_name') || 'aria';
+let openAiKey = localStorage.getItem('openai_key') || '';
 
 function openStoryGame() {
     storySelected = [];
@@ -236,6 +260,30 @@ function renderStoryGame() {
     document.getElementById('story-info').textContent = 'Wähle oder sprich vier Wörter';
     loadVoices();
     populateVoiceSelect();
+    const providerSelect = document.getElementById('tts-provider-select');
+    const openaiVoice = document.getElementById('openai-voice');
+    const openaiKeyInput = document.getElementById('openai-key');
+    providerSelect.value = ttsProvider;
+    openaiVoice.value = openAiVoiceName;
+    openaiKeyInput.value = openAiKey;
+    const voiceSelect = document.getElementById('voice-select');
+    if (ttsProvider === 'openai') {
+        openaiVoice.style.display = 'inline-block';
+        openaiKeyInput.style.display = 'inline-block';
+        voiceSelect.style.display = 'none';
+    } else {
+        openaiVoice.style.display = 'none';
+        openaiKeyInput.style.display = 'none';
+        voiceSelect.style.display = 'inline-block';
+    }
+    openaiVoice.addEventListener('change', () => {
+        openAiVoiceName = openaiVoice.value || 'aria';
+        localStorage.setItem('openai_voice_name', openAiVoiceName);
+    });
+    openaiKeyInput.addEventListener('change', () => {
+        openAiKey = openaiKeyInput.value || '';
+        localStorage.setItem('openai_key', openAiKey);
+    });
  }
 function toggleStorySelection(word) {
     const w = word.toLowerCase();
@@ -281,19 +329,39 @@ function startStory() {
 }
 
 function generateStoryFromWords(words) {
-    const w = words.map(x => x.toLowerCase());
+    const lower = words.map(x => x.toLowerCase());
+    const dict = {
+        haus: {def:'das', noun:'Haus'},
+        laus: {def:'die', noun:'Laus'},
+        maus: {def:'die', noun:'Maus'},
+        auto: {def:'das', noun:'Auto'},
+        bauernhof: {def:'der', noun:'Bauernhof'},
+        giraffe: {def:'die', noun:'Giraffe'},
+        spielzeug: {def:'das', noun:'Spielzeug'},
+        seil: {def:'das', noun:'Seil'},
+        loch: {def:'das', noun:'Loch'}
+    };
+    const defPhrase = (key) => {
+        const d = dict[key] || {def:'das', noun:key};
+        const art = d.def.charAt(0).toUpperCase() + d.def.slice(1);
+        return `${art} ${d.noun}`;
+    };
     const name = currentChild ? currentChild.name : 'Das Kind';
-    const templates = [
-        `${name} machte sich auf den Weg. Vor dem ${w[0]} traf es eine kleine ${w[1]}, die frech kicherte. Zusammen jagten sie eine neugierige ${w[2]}, bis plötzlich ein ${w[3]} hupte. Alle lachten, und am Ende gab es Kakao und Kekse.`,
-        `Heute entdeckt ${name} etwas Neues. Beim ${w[0]} raschelte die ${w[1]} im Gras, die ${w[2]} schnupperte neugierig, und das ${w[3]} blinkte wie ein Stern. Es wurde ein fröhliches Abenteuer mit vielen Witzen und Purzelbäumen.`,
-        `Es war ein sonniger Tag. ${name} sah zuerst ein ${w[0]}, dann kletterte eine ${w[1]} vorbei. Eine ${w[2]} winkte mit dem Schwanz, und ein ${w[3]} fuhr pfeifend vorbei. Alle erzählten lustige Geschichten und machten Quatsch bis die Sonne schlafen ging.`
+     const p0 = defPhrase(lower[0]);
+    const p1 = defPhrase(lower[1]);
+    const p2 = defPhrase(lower[2]);
+    const p3 = defPhrase(lower[3]);
+    const variants = [
+        `${name} macht sich fröhlich auf den Weg. ${p0} steht da und sieht neugierig aus. ${p1} kichert leise, während ${p2} schnuppert. Dann hupt ${p3} einmal freundlich. Alle lachen und tanzen einen kleinen Purzelbaum.`,
+        `Heute entdeckt ${name} etwas Wunderbares. ${p0} glitzert in der Sonne. Nebenan winkt ${p1}. Ganz in der Nähe versucht ${p2} einen kleinen Trick, und ${p3} fährt langsam vorbei. Alle klatschen und rufen Hurra.`,
+        `Es ist ein sonniger Tag. ${name} sieht zuerst ${p0}. Kurz darauf krabbelt ${p1} vorbei. Neugierig schaut ${p2}, und plötzlich meldet sich ${p3}. Alle haben Spaß und erzählen sich fröhliche Späße.`
+       
     ];
     const intro = `Es ist Zeit für eine kleine Geschichte.`;
-    const outro = `Und wenn alle müde werden, sagt die Geschichte Gute Nacht und kichert noch einmal.`;
-    const mid = templates[Math.floor(Math.random() * templates.length)];
     const extra = `Am Ende gibt es eine große Umarmung und ein fröhliches Lächeln.`;
-    const text = `${intro} ${mid} ${extra} ${outro}`;
-    return text;
+    const outro = `Dann sagt die Geschichte Gute Nacht und kichert ein letztes Mal.`;
+    const mid = variants[Math.floor(Math.random() * variants.length)];
+    return `${intro} ${mid} ${extra} ${outro}`;
 }
 
 function playStory() {
@@ -302,18 +370,30 @@ function playStory() {
         window.speechSynthesis.resume();
         return;
     }
-    window.speechSynthesis.cancel();
-    const utter = new SpeechSynthesisUtterance(currentStoryText);
-    utter.lang = 'de-DE';
-    const voice = pickBestVoice();
-    if (voice) utter.voice = voice;
-    utter.rate = 1;
-    utter.pitch = 1.1;
-    window.speechSynthesis.speak(utter);
+    if (ttsProvider === 'openai' && openAiKey) {
+        if (currentAudio) {
+            currentAudio.pause();
+            currentAudio = null;
+        }
+        synthesizeWithOpenAI(currentStoryText);
+    } else {
+        window.speechSynthesis.cancel();
+        const utter = new SpeechSynthesisUtterance(currentStoryText);
+        utter.lang = 'de-DE';
+        const voice = pickBestVoice();
+        if (voice) utter.voice = voice;
+        utter.rate = 1;
+        utter.pitch = 1.05;
+        window.speechSynthesis.speak(utter);
+    }
 }
 
 function stopStory() {
     window.speechSynthesis.cancel();
+ if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+    }
 }
 
 function loadVoices() {
@@ -356,6 +436,41 @@ function pickBestVoice() {
     const femaleRegex = /(Female|frau|Hedda|Katja|Maren|Anna|Lea|Google Deutsch|Microsoft Hedda)/i;
     const preferred = deVoices.find(v => femaleRegex.test(v.name)) || deVoices[0];
     return preferred || availableVoices[0] || null;
+}
+
+async function synthesizeWithOpenAI(text) {
+    try {
+        const res = await fetch('https://api.openai.com/v1/audio/speech', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + openAiKey,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: 'gpt-4o-mini-tts',
+                voice: openAiVoiceName || 'aria',
+                input: text,
+                format: 'mp3'
+            })
+        });
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        currentAudio = new Audio(url);
+        currentAudio.play();
+        currentAudio.onended = () => {
+            URL.revokeObjectURL(url);
+            currentAudio = null;
+        };
+    } catch (e) {
+        window.speechSynthesis.cancel();
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.lang = 'de-DE';
+        const voice = pickBestVoice();
+        if (voice) utter.voice = voice;
+        utter.rate = 1;
+        utter.pitch = 1.05;
+        window.speechSynthesis.speak(utter);
+    }
 }
 function renderProfileCard() {
     const container = document.getElementById('profile-card');
@@ -706,6 +821,7 @@ function handleRetry() {
 }
 
 console.log('📱 App-Code geladen');
+
 
 
 
