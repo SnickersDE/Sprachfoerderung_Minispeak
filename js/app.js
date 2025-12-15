@@ -109,6 +109,10 @@ function setupEventListeners() {
             }
         });
     }
+     const storyStartBtn = document.getElementById('btn-story-start');
+    if (storyStartBtn) {
+        storyStartBtn.addEventListener('click', () => openStoryGame());
+    }
     const endStoryBtn = document.getElementById('btn-end-story');
     if (endStoryBtn) {
         endStoryBtn.addEventListener('click', () => {
@@ -190,6 +194,8 @@ function selectChild(childId) {
 }
 let storySelected = [];
 const STORY_WORDS = ['Haus','Laus','Maus','Auto','Bauernhof','Giraffe','Spielzeug','Seil','Loch'];
+let availableVoices = [];
+let selectedVoiceName = localStorage.getItem('story_voice_name') || '';
 
 function openStoryGame() {
     storySelected = [];
@@ -228,8 +234,9 @@ function renderStoryGame() {
     document.getElementById('story-mic').classList.remove('recording');
     document.getElementById('story-text').innerHTML = '';
     document.getElementById('story-info').textContent = 'Wähle oder sprich vier Wörter';
-}
-
+    loadVoices();
+    populateVoiceSelect();
+ }
 function toggleStorySelection(word) {
     const w = word.toLowerCase();
     const idx = storySelected.findIndex(x => x.toLowerCase() === w);
@@ -298,9 +305,8 @@ function playStory() {
     window.speechSynthesis.cancel();
     const utter = new SpeechSynthesisUtterance(currentStoryText);
     utter.lang = 'de-DE';
-    const voices = window.speechSynthesis.getVoices();
-    const preferred = voices.find(v => v.lang && v.lang.startsWith('de') && /Google|Microsoft|Female|frau/i.test(v.name));
-    utter.voice = preferred || voices.find(v => v.lang && v.lang.startsWith('de')) || null;
+    const voice = pickBestVoice();
+    if (voice) utter.voice = voice;
     utter.rate = 1;
     utter.pitch = 1.1;
     window.speechSynthesis.speak(utter);
@@ -308,6 +314,48 @@ function playStory() {
 
 function stopStory() {
     window.speechSynthesis.cancel();
+}
+
+function loadVoices() {
+    availableVoices = window.speechSynthesis.getVoices();
+}
+
+if (window.speechSynthesis && typeof window.speechSynthesis.onvoiceschanged !== 'undefined') {
+    window.speechSynthesis.onvoiceschanged = () => {
+        loadVoices();
+        populateVoiceSelect();
+    };
+}
+
+function populateVoiceSelect() {
+    const select = document.getElementById('voice-select');
+    if (!select) return;
+    select.innerHTML = '';
+    const deVoices = availableVoices.filter(v => v.lang && v.lang.startsWith('de'));
+    const voicesToShow = deVoices.length ? deVoices : availableVoices;
+    voicesToShow.forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = v.name;
+        opt.textContent = `${v.name} (${v.lang})`;
+        if (selectedVoiceName && v.name === selectedVoiceName) opt.selected = true;
+        select.appendChild(opt);
+    });
+    select.addEventListener('change', () => {
+        selectedVoiceName = select.value;
+        localStorage.setItem('story_voice_name', selectedVoiceName);
+    });
+}
+
+function pickBestVoice() {
+    loadVoices();
+    if (selectedVoiceName) {
+        const match = availableVoices.find(v => v.name === selectedVoiceName);
+        if (match) return match;
+    }
+    const deVoices = availableVoices.filter(v => v.lang && v.lang.startsWith('de'));
+    const femaleRegex = /(Female|frau|Hedda|Katja|Maren|Anna|Lea|Google Deutsch|Microsoft Hedda)/i;
+    const preferred = deVoices.find(v => femaleRegex.test(v.name)) || deVoices[0];
+    return preferred || availableVoices[0] || null;
 }
 function renderProfileCard() {
     const container = document.getElementById('profile-card');
@@ -658,5 +706,6 @@ function handleRetry() {
 }
 
 console.log('📱 App-Code geladen');
+
 
 
