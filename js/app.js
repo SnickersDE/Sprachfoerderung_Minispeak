@@ -322,8 +322,17 @@ function highlightStoryWord(word, active) {
 
 let currentStoryText = '';
 
-function startStory() {
-    currentStoryText = generateStoryFromWords(storySelected);
+async function startStory() {
+    document.getElementById('story-text').textContent = 'Die Geschichte wird gerade geschrieben...';
+    try {
+        if (ttsProvider === 'openai' && openAiKey) {
+            currentStoryText = await generateCreativeStoryOpenAI(storySelected);
+        } else {
+            currentStoryText = generateProceduralStory(storySelected);
+        }
+    } catch (e) {
+        currentStoryText = generateProceduralStory(storySelected);
+    }
     document.getElementById('story-text').textContent = currentStoryText;
     playStory();
 }
@@ -351,17 +360,89 @@ function generateStoryFromWords(words) {
     const p1 = defPhrase(lower[1]);
     const p2 = defPhrase(lower[2]);
     const p3 = defPhrase(lower[3]);
-    const variants = [
-        `${name} macht sich fröhlich auf den Weg. ${p0} steht da und sieht neugierig aus. ${p1} kichert leise, während ${p2} schnuppert. Dann hupt ${p3} einmal freundlich. Alle lachen und tanzen einen kleinen Purzelbaum.`,
-        `Heute entdeckt ${name} etwas Wunderbares. ${p0} glitzert in der Sonne. Nebenan winkt ${p1}. Ganz in der Nähe versucht ${p2} einen kleinen Trick, und ${p3} fährt langsam vorbei. Alle klatschen und rufen Hurra.`,
-        `Es ist ein sonniger Tag. ${name} sieht zuerst ${p0}. Kurz darauf krabbelt ${p1} vorbei. Neugierig schaut ${p2}, und plötzlich meldet sich ${p3}. Alle haben Spaß und erzählen sich fröhliche Späße.`
-       
-    ];
+    
     const intro = `Es ist Zeit für eine kleine Geschichte.`;
     const extra = `Am Ende gibt es eine große Umarmung und ein fröhliches Lächeln.`;
     const outro = `Dann sagt die Geschichte Gute Nacht und kichert ein letztes Mal.`;
-    const mid = variants[Math.floor(Math.random() * variants.length)];
-    return `${intro} ${mid} ${extra} ${outro}`;
+     const name = currentChild ? currentChild.name : 'Das Kind';
+    const phrases = [p0, p1, p2, p3];
+    const mid = phrases.join(', ');
+    return `${intro} ${name} entdeckt heute ${mid}. ${extra} ${outro}`;
+}
+
+function randPick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+function cap(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
+
+function generateProceduralStory(words) {
+    const lower = words.map(x => x.toLowerCase());
+    const dict = {
+        haus: {def:'das', noun:'Haus'}, laus: {def:'die', noun:'Laus'}, maus: {def:'die', noun:'Maus'},
+        auto: {def:'das', noun:'Auto'}, bauernhof: {def:'der', noun:'Bauernhof'}, giraffe: {def:'die', noun:'Giraffe'},
+        spielzeug: {def:'das', noun:'Spielzeug'}, seil: {def:'das', noun:'Seil'}, loch: {def:'das', noun:'Loch'}
+    };
+    const artNoun = (k) => {
+        const d = dict[k] || {def:'das', noun:k};
+        return `${d.def} ${d.noun}`;
+    };
+    const verbs = ['lacht', 'tanzt', 'flüstert', 'staunt', 'kichert', 'springt', 'malt', 'träumt', 'hüpft', 'summt'];
+    const adjs = ['neugierig', 'freundlich', 'witzig', 'bunt', 'glitzernd', 'sanft', 'fröhlich', 'mutig'];
+    const advs = ['leise', 'fröhlich', 'plötzlich', 'ganz', 'eben', 'oft', 'manchmal', 'gleich'];
+    const joins = ['Dann', 'Plötzlich', 'Danach', 'Nebenbei', 'Kurz darauf', 'Am Ende', 'Später'];
+    const name = currentChild ? currentChild.name : 'Das Kind';
+    const subjects = lower.map(k => artNoun(k));
+    const pool = [];
+    for (let i=0;i<12;i++){
+        const subj = randPick(subjects);
+        const v = randPick(verbs);
+        const a = randPick(adjs);
+        const adv = randPick(advs);
+        const j = randPick(joins);
+        const sentence = `${cap(subj)} ${adv} ${v} ${randPick(['im Garten','auf dem Weg','neben dem Zaun','unter der Sonne','beim Spielen'])} und wirkt ${a}. ${j} ${randPick(['erzählen alle einen Witz','klatschen alle in die Hände','machen alle einen Purzelbaum','zeichnen ein Herz in die Luft'])}.`;
+        pool.push(sentence);
+    }
+    // Sicherstellen: jedes der ausgewählten Wörter kommt mindestens einmal explizit vor
+    const ensured = lower.map(k => {
+        const s = `${cap(artNoun(k))} hat heute besonders gute Laune und ${randPick(verbs)} ${randPick(['im Kreis','wie ein Profi','wie ein Wirbelwind'])}.`;
+        return s;
+    });
+    // Story zusammenstellen und kürzen
+    const intro = `${name} erlebt heute etwas Wunderbares.`;
+    const outro = `Zum Schluss gibt es eine Umarmung und ein Lächeln.`;
+    const all = [intro, ...ensured, ...pool, outro];
+    let text = all.join(' ');
+    // leichte Kürzung, zielt auf ~160–220 Wörter
+    const wordsCount = text.split(/\s+/).length;
+    if (wordsCount > 230) {
+        text = text.split(/\s+/).slice(0, 220).join(' ') + '.';
+    }
+    return text;
+}
+
+async function generateCreativeStoryOpenAI(words) {
+    const name = currentChild ? currentChild.name : 'Ein Kind';
+    const prompt = `Schreibe eine kurze, kindgerechte, kreative und witzige Geschichte auf Deutsch. Bitte nicht zu moralisierend. Am besten mit Überraschungen und Wendungen.
+Sie soll warm klingen, flüssig vorgelesen werden können und maximal etwa eine halbe DIN-A4 Seite in Arial 11 sein (~250–300 Wörter).
+Baue die folgenden Begriffe natürlich und grammatikalisch korrekt ein (richtige Artikel, korrekte Aussprache!): ${words.join(', ')}.
+Nenne das Kind "${name}" in der Geschichte. Vermeide Aufzählungs-Templates; erfinde frei und natürlich wirkende Sätze.`;
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+            'Authorization': 'Bearer ' + openAiKey,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: [
+                {role:'system', content:'Du bist eine warmherzige Erzählstimme, die kindgerechte, humorvolle Kurzgeschichten in perfektem Deutsch schreibt.'},
+                {role:'user', content: prompt}
+            ],
+            temperature: 0.9
+        })
+    });
+    if (!res.ok) throw new Error('OpenAI story generation failed');
+    const data = await res.json();
+    const text = data.choices?.[0]?.message?.content || '';
+    return text.trim();
 }
 
 function playStory() {
@@ -821,6 +902,7 @@ function handleRetry() {
 }
 
 console.log('📱 App-Code geladen');
+
 
 
 
