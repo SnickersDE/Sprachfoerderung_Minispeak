@@ -83,6 +83,36 @@ function setupEventListeners() {
     document.getElementById('btn-record').addEventListener('click', () => {
         startRecording();
     });
+    const nextSubBtn = document.getElementById('btn-next-sublevel');
+    if (nextSubBtn) {
+        nextSubBtn.addEventListener('click', () => {
+            dataManager.completeSublevel(
+                currentChild.id,
+                currentLevelData.id,
+                currentSublevelData.id
+            );
+            if (currentSublevelIndex < currentLevelData.sublevels.length - 1) {
+                currentSublevelIndex++;
+                renderTrainingScreen();
+            } else {
+                showScreen('overview');
+                renderLevelsGrid();
+            }
+        });
+    }
+    const navKinder = document.getElementById('btn-nav-kinder');
+    const navOverview = document.getElementById('btn-nav-uebersicht');
+    if (navKinder) {
+        navKinder.addEventListener('click', () => {
+            showScreen('login');
+        });
+    }
+    if (navOverview) {
+        navOverview.addEventListener('click', () => {
+            showScreen('overview');
+            renderLevelsGrid();
+        });
+    }
 
     // Feedback-Buttons
     document.getElementById('btn-correct').addEventListener('click', () => {
@@ -1210,9 +1240,12 @@ function startRecording() {
     const mic = document.querySelector('.mic-circle');
     if (statusEl) statusEl.textContent = '🎤 Aufnahme läuft – sprich die Wörter';
     if (mic) mic.classList.add('recording');
+    const hint = document.getElementById('recording-hint');
+    if (hint) hint.style.display = 'inline';
     trainingRecognized.clear();
     trainingOrder = [];
     speechRecognition.setReadingMode(true);
+    speechRecognition.setKeepAlive(true);
     speechRecognition.configureThreshold(0.35, false);
     speechRecognition.onResult = (transcript) => {
         handleTrainingContinuousResult(transcript);
@@ -1243,6 +1276,8 @@ function handleTrainingContinuousResult(transcript) {
             speechRecognition.stop();
             const mic = document.querySelector('.mic-circle');
             if (mic) mic.classList.remove('recording');
+            const hint = document.getElementById('recording-hint');
+            if (hint) hint.style.display = 'none';
             const statusEl = document.getElementById('recognition-status');
             if (statusEl) statusEl.textContent = 'Alle Wörter erkannt! ✓';
             const btnOk = document.getElementById('btn-correct');
