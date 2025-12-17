@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=League+Spartan:wght@700&display=swap');
 * {
     margin: 0;
     padding: 0;
@@ -5,7 +6,7 @@
 }
 
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: 'League Spartan', system-ui, -apple-system, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     min-height: 100vh;
     padding: 20px;
@@ -57,6 +58,22 @@ h1 {
 h2 {
     font-size: 2rem;
     color: #333;
+}
+
+.rainbow-title {
+    background: linear-gradient(90deg, #ff6b6b, #feca57, #1dd1a1, #54a0ff, #5f27cd);
+    background-size: 300% 300%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: rainbowShift 12s ease infinite;
+    letter-spacing: 0.5px;
+}
+
+@keyframes rainbowShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
 }
 
 .subtitle {
@@ -273,7 +290,7 @@ h2 {
 
 .word-image-wrap {
     width: 100%;
-    height: 240px;
+    height: 280px;
     position: relative;
     background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
     display: flex;
@@ -306,9 +323,9 @@ h2 {
     padding: 6px 10px;
     font-size: 1rem;
     font-weight: 700;
-    color: #fff;
-    background: transparent;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.6);
+    color: #000;
+    background: rgba(255,255,255,0.7);
+    border-radius: 8px;
 }
 
 .word-card.correct .word-label {
@@ -385,6 +402,15 @@ h2 {
 #mic-icon {
     font-size: 2rem;
 }
+.btn-record {
+    width: 56px;
+    height: 56px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    padding: 0;
+}
 .recording-hint {
     color: #856404;
     font-size: 0.85rem;
@@ -427,6 +453,63 @@ h2 {
     max-height: 300px;
     border-radius: 20px;
     box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+.landing-hero {
+    margin: 15px 0 25px 0;
+    min-height: 220px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.25), rgba(255,255,255,0.1));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.dice-container {
+    width: 180px;
+    height: 180px;
+    perspective: 900px;
+}
+.dice {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 0.3s ease;
+    user-select: none;
+    cursor: grab;
+}
+.dice:active { cursor: grabbing; }
+.dice-face {
+    position: absolute;
+    width: 150px;
+    height: 150px;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    background: rgba(255,255,255,0.9);
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+}
+.face-front  { transform: translate(-50%, -50%) translateZ(75px); }
+.face-back   { transform: translate(-50%, -50%) rotateY(180deg) translateZ(75px); }
+.face-right  { transform: translate(-50%, -50%) rotateY(90deg) translateZ(75px); }
+.face-left   { transform: translate(-50%, -50%) rotateY(-90deg) translateZ(75px); }
+.face-top    { transform: translate(-50%, -50%) rotateX(90deg) translateZ(75px); }
+.face-bottom { transform: translate(-50%, -50%) rotateX(-90deg) translateZ(75px); }
+
+.sound-action-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.sound-action-buttons .btn {
+    flex: 1 1 160px;
+    padding: 12px 18px;
 }
 
 /* Action Buttons */
