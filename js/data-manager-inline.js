@@ -50,7 +50,7 @@ class DataManager {
                         {"id": "l2_s3", "reim_ideen": ["Blume", "Pflaume", "Biene"], "schwierigkeitsgrad": "mittel", "bild_ordner": "level2"},
                         {"id": "l2_s4", "reim_ideen": ["Tisch", "Fisch", "Wisch"], "schwierigkeitsgrad": "mittel", "bild_ordner": "level2"},
                         {"id": "l2_s5", "reim_ideen": ["Hahn", "Bahn", "Kahn"], "schwierigkeitsgrad": "mittel", "bild_ordner": "level2"},
-                        {"id": "l2_s6", "reim_ideen": ["Wolke", "Rolle", "Knolle"], "schwierigkeitsgrad": "mittel", "bild_ordner": "level2"},
+                        {"id": "l2_s6", "reim_ideen": ["Wolle", "Rolle", "Knolle"], "schwierigkeitsgrad": "mittel", "bild_ordner": "level2"},
                         {"id": "l2_s7", "reim_ideen": ["Wiese", "Riese", "Briese"], "schwierigkeitsgrad": "mittel", "bild_ordner": "level2"},
                         {"id": "l2_s8", "reim_ideen": ["Kiste", "Liste", "Piste"], "schwierigkeitsgrad": "mittel", "bild_ordner": "level2"},
                         {"id": "l2_s9", "reim_ideen": ["Garten", "Karten", "Spaten"], "schwierigkeitsgrad": "mittel", "bild_ordner": "level2"},
