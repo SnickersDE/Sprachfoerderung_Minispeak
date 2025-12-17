@@ -31,6 +31,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // Setup Event Listeners
     setupEventListeners();
+    setupLandingDice();
     
     console.log('✅ App bereit!');
 });
@@ -128,6 +129,8 @@ function setupEventListeners() {
             renderChildrenList();
         });
     }
+    // Landing-Würfel Interaktion erneut aktivieren beim Navigieren
+    setupLandingDice();
 
     // Feedback-Buttons
     document.getElementById('btn-correct').addEventListener('click', () => {
@@ -651,9 +654,9 @@ function openSoundCategory(catKey) {
                 <div class="difficulty-badge ${done ? 'difficulty-leicht' : 'difficulty-mittel'}">${done ? 'fertig' : 'offen'}</div>
             </div>
             <h3>${item.id}</h3>
-            <div class="action-buttons">
-                <button class="btn btn-success">🟢 Abspielen</button>
-                <button class="btn btn-primary">Auswählen</button>
+            <div class="action-buttons sound-action-buttons">
+                <button class="btn btn-success sound-btn">🟢 Abspielen</button>
+                <button class="btn btn-primary sound-btn">Auswählen</button>
             </div>
         `;
         const playBtn = card.querySelector('.btn.btn-success');
@@ -1322,6 +1325,17 @@ function handleTrainingContinuousResult(transcript) {
             const statusEl = document.getElementById('recognition-status');
             if (statusEl) statusEl.textContent = `Erkannt: ${trainingRecognized.size}/${currentSublevelData.reim_ideen.length}`;
         }
+        // Motivations-Boost: drittes Wort automatisch vervollständigen, wenn zwei korrekt sind
+        if (trainingRecognized.size === currentSublevelData.reim_ideen.length - 1) {
+            const missing = (currentSublevelData.reim_ideen.find(w => !trainingRecognized.has(w.toLowerCase())) || '').toLowerCase();
+            if (missing) {
+                trainingRecognized.add(missing);
+                trainingOrder.push(missing);
+                highlightMatchedWord(missing);
+                const statusEl = document.getElementById('recognition-status');
+                if (statusEl) statusEl.textContent = `Erkannt: ${trainingRecognized.size}/${currentSublevelData.reim_ideen.length}`;
+            }
+        }
         if (trainingRecognized.size >= currentSublevelData.reim_ideen.length) {
             speechRecognition.stop();
             const mic = document.querySelector('.mic-circle');
@@ -1400,3 +1414,41 @@ function handleRetry() {
 }
 
 console.log('📱 App-Code geladen');
+
+// Landing-Würfel Interaktion
+function setupLandingDice() {
+    const dice = document.getElementById('landing-dice');
+    if (!dice) return;
+    let rotX = -20, rotY = 20;
+    let down = false, lastX = 0, lastY = 0;
+    const update = () => {
+        dice.style.transform = `rotateX(${rotX}deg) rotateY(${rotY}deg)`;
+    };
+    update();
+    const getPos = (e) => {
+        if (e.touches && e.touches[0]) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        return { x: e.clientX, y: e.clientY };
+    };
+    const onDown = (e) => {
+        down = true;
+        const p = getPos(e);
+        lastX = p.x; lastY = p.y;
+    };
+    const onMove = (e) => {
+        if (!down) return;
+        const p = getPos(e);
+        const dx = p.x - lastX;
+        const dy = p.y - lastY;
+        rotY += dx * 0.4;
+        rotX -= dy * 0.4;
+        lastX = p.x; lastY = p.y;
+        update();
+    };
+    const onUp = () => { down = false; };
+    dice.addEventListener('mousedown', onDown);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    dice.addEventListener('touchstart', onDown, { passive: true });
+    window.addEventListener('touchmove', onMove, { passive: true });
+    window.addEventListener('touchend', onUp);
+}
