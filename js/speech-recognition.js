@@ -1,13 +1,14 @@
-   
+
 
 class SpeechRecognitionModule {
-    constructor() {
-        this.recognition = null;
-        this.isRecording = false;
-        this.onResult = null;
-        this.onError = null;
-        this.isReadingMode = false;
-        this.USE_DYNAMIC_THRESHOLD = true;
+  constructor() {
+    this.recognition = null;
+    this.isRecording = false;
+    this.onResult = null;
+    this.onError = null;
+    this.isReadingMode = false;
+    this.USE_DYNAMIC_THRESHOLD = true;
+    this.keepAlive = false;
         
         // KONFIGURATION - HIER ANPASSBAR
         this.SIMILARITY_THRESHOLD = 0.8; // Basisschwelle
@@ -79,16 +80,21 @@ class SpeechRecognitionModule {
             }
         };
 
-        this.recognition.onend = () => {
-            console.log('🛑 Aufnahme beendet');
-            this.isRecording = false;
-        };
+    this.recognition.onend = () => {
+      console.log('🛑 Aufnahme beendet');
+      this.isRecording = false;
+      if (this.keepAlive && this.isReadingMode) {
+        try {
+          this.start();
+        } catch {}
+      }
+    };
 
         console.log('✅ Speech Recognition initialisiert');
     }
 
     // Starte Aufnahme
-    start() {
+  start() {
         if (!this.recognition) {
             console.warn('Speech Recognition nicht verfügbar');
             return;
@@ -99,15 +105,15 @@ class SpeechRecognitionModule {
             return;
         }
 
-        try {
-            this.recognition.start();
+    try {
+      this.recognition.start();
             
             // Auto-Stop nach MAX_RECORDING_TIME
-            setTimeout(() => {
-                if (this.isRecording) {
-                    this.stop();
-                }
-            }, this.MAX_RECORDING_TIME);
+      setTimeout(() => {
+        if (this.isRecording) {
+          if (!this.keepAlive) this.stop();
+        }
+      }, this.MAX_RECORDING_TIME);
             
         } catch (error) {
             console.error('Fehler beim Starten:', error);
@@ -115,25 +121,30 @@ class SpeechRecognitionModule {
     }
 
     // Stoppe Aufnahme
-    stop() {
-        if (this.recognition && this.isRecording) {
-            this.recognition.stop();
-        }
+  stop() {
+    if (this.recognition && this.isRecording) {
+      this.keepAlive = false;
+      this.recognition.stop();
     }
+  }
 
     // Lese-Modus aktivieren: kontinuierlich und mit Zwischen-Ergebnissen
-    setReadingMode(enabled) {
-        this.isReadingMode = !!enabled;
-        if (this.recognition) {
-            this.recognition.continuous = this.isReadingMode;
-            this.recognition.interimResults = this.isReadingMode;
-            this.recognition.maxAlternatives = this.isReadingMode ? 7 : 5;
-        }
-        // In Lesen-Modus etwas toleranter
-        this.SIMILARITY_THRESHOLD = this.isReadingMode ? 0.75 : 0.8;
-        // Längere Session ohne Autostop
-        this.MAX_RECORDING_TIME = this.isReadingMode ? 120000 : 5000;
+  setReadingMode(enabled) {
+    this.isReadingMode = !!enabled;
+    if (this.recognition) {
+      this.recognition.continuous = this.isReadingMode;
+      this.recognition.interimResults = this.isReadingMode;
+      this.recognition.maxAlternatives = this.isReadingMode ? 7 : 5;
     }
+    // In Lesen-Modus etwas toleranter
+    this.SIMILARITY_THRESHOLD = this.isReadingMode ? 0.75 : 0.8;
+    // Längere Session ohne Autostop
+    this.MAX_RECORDING_TIME = this.isReadingMode ? 120000 : 5000;
+  }
+
+  setKeepAlive(enabled) {
+    this.keepAlive = !!enabled;
+  }
 
     configureThreshold(threshold, useDynamic) {
         if (typeof threshold === 'number') this.SIMILARITY_THRESHOLD = threshold;
