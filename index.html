@@ -3,23 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Deine Sprachwerkstatt</title>
+    <title>Sprachförderung Demo</title>
     <base href="./">
     <link rel="stylesheet" href="./css/styles.css">
 </head>
 <body>
     <div id="app-nav" style="max-width:1200px;margin:0 auto 15px auto;background:#fff;border-radius:20px;padding:15px 20px;box-shadow:0 10px 30px rgba(0,0,0,0.15);display:flex;justify-content:space-between;align-items:center;">
-        <div style="font-weight:800;font-size:1.2rem;color:#333;">Deine Sprachwerkstatt</div>
+        <div id="btn-nav-title" style="font-weight:800;font-size:1.2rem;color:#333;cursor:pointer;">Deine Sprachwerkstatt</div>
         <div style="display:flex;gap:10px;">
             <button id="btn-nav-kinder" class="btn btn-secondary">Kinder</button>
             <button id="btn-nav-uebersicht" class="btn btn-primary">Spielübersicht</button>
         </div>
     </div>
+    <!-- Landing Screen -->
+    <div id="landing-screen" class="screen">
+        <div class="container">
+            <div class="header">
+                <div>
+                    <h2>Deine Sprachwerkstatt</h2>
+                    <p>Willkommen! Drücke auf Fortsetzen, um die Kinder-Auswahl zu öffnen.</p>
+                </div>
+            </div>
+            <div class="breadcrumb">Start → Landing</div>
+            <div class="action-buttons">
+                <button id="btn-landing-continue" class="btn btn-primary">Fortsetzen</button>
+            </div>
+        </div>
+    </div>
     <!-- Login Screen -->
     <div id="login-screen" class="screen active">
         <div class="container">
-            <h1>DEINE SPRACHWERKSTATT</h1>
-            <p class="subtitle">Mit wem möchtest du heute spielen und lernen?</p>
+            <h1>🎯 Sprachförderung-Demo</h1>
+            <p class="subtitle">Wähle ein Kind aus</p>
+            <div class="breadcrumb">Start</div>
             <div id="children-list" class="children-grid"></div>
         </div>
     </div>
@@ -76,7 +92,6 @@
                 </div>
                 <h3>Auditives Reim-Memory (Level 1)</h3>
                 <p>Höre ein Zielwort und finde passende Reime.</p>
-                <div class="progress-bar"><div id="memory1-progress-fill" class="progress-fill"></div></div>
                 <button id="btn-memory1-start" class="btn btn-primary">Start</button>
             </div>
             <div id="memory2-card" class="level-card" role="button" tabindex="0" aria-label="Auditives Reim-Memory Level 2 öffnen">
@@ -86,7 +101,6 @@
                 </div>
                 <h3>Auditives Reim-Memory (Level 2)</h3>
                 <p>Höre ein Zielwort und finde passende Reime.</p>
-                <div class="progress-bar"><div id="memory2-progress-fill" class="progress-fill"></div></div>
                 <button id="btn-memory2-start" class="btn btn-primary">Start</button>
             </div>
             <div id="memory3-card" class="level-card" role="button" tabindex="0" aria-label="Auditives Reim-Memory Level 3 öffnen">
@@ -96,7 +110,6 @@
                 </div>
                 <h3>Auditives Reim-Memory (Level 3)</h3>
                 <p>Höre ein Zielwort und finde passende Reime.</p>
-                <div class="progress-bar"><div id="memory3-progress-fill" class="progress-fill"></div></div>
                 <button id="btn-memory3-start" class="btn btn-primary">Start</button>
             </div>
             <div id="sound-card" class="level-card" role="button" tabindex="0" aria-label="Geräusch erkennen öffnen">
@@ -104,9 +117,8 @@
                     <div class="level-icon">🔊</div>
                     <div class="difficulty-badge difficulty-leicht">Spiel</div>
                 </div>
-                <h3>Geräusch erkennen</h3>
-                <p>Welches Geräusch hörst du? Wähle zuerst eine Kategorie aus und suche das richtige Bild zum passenden Geräusch</p>
-                <div class="progress-bar"><div id="sound-overview-progress" class="progress-fill"></div></div>
+                <h3>Töne kennenlernen</h3>
+                <p>Welchen Ton hörst du? Wähle eine Kategorie und finde das passende Bild.</p>
                 <button id="btn-sound-start" class="btn btn-primary">Start</button>
             </div>
             <div id="levels-grid" class="levels-grid"></div>
@@ -155,6 +167,7 @@
                 <button id="btn-memory-play" class="btn btn-success">🟢 Los</button>
                 <button id="btn-memory-reset" class="btn btn-secondary">🔄 Neue Runde</button>
             </div>
+            <div id="memory-target" class="word-image-container"></div>
             <div class="progress-bar"><div id="memory-progress-fill" class="progress-fill"></div></div>
             <div id="memory-status" class="info-box"><p>Gefundene Reime: 0/0</p></div>
             <div id="memory-grid" class="word-list"></div>
@@ -198,7 +211,7 @@
                     <h2 id="level-title"></h2>
                     <p id="sublevel-info"></p>
                 </div>
-                <button id="btn-end-training" class="btn btn-secondary">Beenden</button>
+                <button id="btn-end-training" class="btn btn-secondary">Zurück</button>
             </div>
             <div class="breadcrumb">Start → Übersicht → Training</div>
             
@@ -248,4 +261,3 @@
     <script src="./js/app.js" defer></script>
 </body>
 </html>
-
