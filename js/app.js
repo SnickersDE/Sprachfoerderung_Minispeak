@@ -10,6 +10,7 @@ let currentSublevelData = null;
 // UI Elemente
 const screens = {
     login: document.getElementById('login-screen'),
+    landing: document.getElementById('landing-screen'),
     overview: document.getElementById('overview-screen'),
     training: document.getElementById('training-screen'),
     story: document.getElementById('story-screen'),
@@ -25,7 +26,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Warte auf DataManager
     await waitForDataManager();
     
-    // Zeige Kinder-Auswahl
+    // Zeige Kinder-Auswahl initial
     renderChildrenList();
     
     // Setup Event Listeners
@@ -102,15 +103,29 @@ function setupEventListeners() {
     }
     const navKinder = document.getElementById('btn-nav-kinder');
     const navOverview = document.getElementById('btn-nav-uebersicht');
+    const navTitle = document.getElementById('btn-nav-title');
     if (navKinder) {
         navKinder.addEventListener('click', () => {
             showScreen('login');
+            renderChildrenList();
         });
     }
     if (navOverview) {
         navOverview.addEventListener('click', () => {
             showScreen('overview');
             renderLevelsGrid();
+        });
+    }
+    if (navTitle) {
+        navTitle.addEventListener('click', () => {
+            showScreen('landing');
+        });
+    }
+    const landingContinue = document.getElementById('btn-landing-continue');
+    if (landingContinue) {
+        landingContinue.addEventListener('click', () => {
+            showScreen('login');
+            renderChildrenList();
         });
     }
 
@@ -370,6 +385,15 @@ function buildMemoryRound() {
     memoryRhymeSet = targetGroup.slice();
     memoryFoundCount = 0;
     grid.innerHTML = '';
+    const targetBox = document.getElementById('memory-target');
+    if (targetBox) {
+        const folder = `level${memoryLevel}`;
+        const path = `./images/${folder}/${memoryTarget.toLowerCase()}.png`;
+        const img = new Image();
+        img.onload = () => { targetBox.innerHTML = `<img src="${path}" alt="${memoryTarget}">`; };
+        img.onerror = () => { targetBox.innerHTML = `<img src="${generatePlaceholderPng(0, memoryLevel === 1 ? 'leicht' : memoryLevel === 2 ? 'mittel' : 'schwer')}" alt="${memoryTarget}">`; };
+        img.src = path;
+    }
     const rhymeCount = memoryLevel === 1 ? 2 : memoryLevel === 2 ? 3 : 4;
     const distractorCount = memoryLevel === 1 ? 2 : memoryLevel === 2 ? 3 : 4;
     const rhymeChoices = shuffle(memoryRhymeSet.filter(w => w !== memoryTarget)).slice(0, rhymeCount);
@@ -420,6 +444,11 @@ function handleMemoryCardClick(card, imgPath, word) {
     const isRhyme = memoryRhymeSet.includes(word);
     if (isRhyme) {
         card.classList.add('correct');
+        const badge = document.createElement('div');
+        badge.className = 'done-badge';
+        badge.textContent = '✓';
+        const existing = wrap.querySelector('.done-badge');
+        if (!existing) wrap.appendChild(badge);
         memoryFoundCount++;
         updateMemoryStatus();
         const targetTotal = Math.min(memoryRhymeSet.length - 1, (memoryLevel === 1 ? 2 : memoryLevel === 2 ? 3 : 4));
@@ -504,26 +533,39 @@ const SOUND_CATEGORIES = {
         items: [
             { id: 'miauen', options: ['hund','katze','kuh','schaf'], correct: 'katze' },
             { id: 'bellen', options: ['hund','katze','kuh','schaf'], correct: 'hund' },
-            { id: 'voegel', options: ['vogel','katze','kuh','schaf'], correct: 'vogel' },
-            { id: 'kuh', options: ['hund','katze','kuh','schaf'], correct: 'kuh' }
+            { id: 'wiehern', options: ['pferd','hund','katze','kuh'], correct: 'pferd' },
+            { id: 'quaken', options: ['frosch','ente','kuh','schwein'], correct: 'frosch' },
+            { id: 'muht', options: ['kuh','schaf','hund','katze'], correct: 'kuh' },
+            { id: 'ia', options: ['esel','hund','katze','schaf'], correct: 'esel' },
+            { id: 'schnattern', options: ['ente','vogel','katze','hund'], correct: 'ente' },
+            { id: 'brüllt', options: ['löwe','hund','katze','schwein'], correct: 'löwe' },
+            { id: 'grunzt', options: ['schwein','kuh','katze','hund'], correct: 'schwein' },
+            { id: 'summt', options: ['biene','vogel','ente','schaf'], correct: 'biene' }
         ]
     },
     alltag: {
         label: 'Alltag',
         items: [
             { id: 'wasser', options: ['wasser','telefon','auto','tuer'], correct: 'wasser' },
-            { id: 'tuer', options: ['wasser','telefon','auto','tuer'], correct: 'tuer' },
-            { id: 'auto', options: ['wasser','telefon','auto','tuer'], correct: 'auto' },
-            { id: 'telefon', options: ['wasser','telefon','auto','tuer'], correct: 'telefon' }
+            { id: 'schluessel', options: ['schluessel','staubsauger','zug','schritte'], correct: 'schluessel' },
+            { id: 'staubsauger', options: ['staubsauger','schritte','auto','telefon'], correct: 'staubsauger' },
+            { id: 'schritte', options: ['schritte','zug','tuer','wasser'], correct: 'schritte' },
+            { id: 'zug', options: ['zug','auto','telefon','tuer'], correct: 'zug' },
+            { id: 'auto', options: ['auto','telefon','tuer','wasser'], correct: 'auto' },
+            { id: 'telefon', options: ['telefon','auto','tuer','wasser'], correct: 'telefon' },
+            { id: 'tuer', options: ['tuer','telefon','auto','wasser'], correct: 'tuer' }
         ]
     },
     musik: {
         label: 'Musik',
         items: [
+            { id: 'klatschen', options: ['klatschen','flöte','klavier','trommel'], correct: 'klatschen' },
+            { id: 'flöte', options: ['flöte','klavier','schlagzeug','rassel'], correct: 'flöte' },
+            { id: 'klavier', options: ['klavier','gitarre','trompete','rassel'], correct: 'klavier' },
             { id: 'gitarre', options: ['gitarre','trompete','schlagzeug','rassel'], correct: 'gitarre' },
-            { id: 'trompete', options: ['gitarre','trompete','schlagzeug','rassel'], correct: 'trompete' },
-            { id: 'schlagzeug', options: ['gitarre','trompete','schlagzeug','rassel'], correct: 'schlagzeug' },
-            { id: 'rassel', options: ['gitarre','trompete','schlagzeug','rassel'], correct: 'rassel' }
+            { id: 'trompete', options: ['trompete','gitarre','schlagzeug','rassel'], correct: 'trompete' },
+            { id: 'schlagzeug', options: ['schlagzeug','trompete','gitarre','rassel'], correct: 'schlagzeug' },
+            { id: 'rassel', options: ['rassel','gitarre','trompete','schlagzeug'], correct: 'rassel' }
         ]
     }
 };
@@ -580,6 +622,9 @@ function renderSoundCategories() {
                 <div class="difficulty-badge difficulty-leicht">Spiel</div>
             </div>
             <h3>${cat.label}</h3>
+            <div class="word-image-wrap" style="height:160px;">
+                <img src="./images/sounds/categories/${key}.png" alt="${cat.label}">
+            </div>
             <div class="progress-bar"><div class="progress-fill" style="width:${getSoundCategoryPercent(key)}%"></div></div>
             <button class="btn btn-primary">Öffnen</button>
         `;
@@ -1167,6 +1212,11 @@ function renderTrainingScreen() {
     document.getElementById('word-image').innerHTML = '';
     document.getElementById('recognition-status').textContent = speechRecognition.recognition ? 'Drücke auf das Mikrofon zum Starten' : 'Spracherkennung ist optional. Nutze ✓ Richtig oder ✗ Nochmal.';
     document.querySelector('.mic-circle').classList.remove('recording');
+    const micro = document.querySelector('#training-screen .microphone-section');
+    const actions = document.querySelector('#training-screen .action-buttons');
+    if (micro && actions && micro.parentElement !== actions) {
+        actions.prepend(micro);
+    }
 }
 
 function highlightMatchedWord(word) {
