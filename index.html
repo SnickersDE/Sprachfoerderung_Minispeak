@@ -8,8 +8,8 @@
     <link rel="stylesheet" href="./css/styles.css">
 </head>
 <body>
-    <div id="app-nav" style="max-width:1200px;margin:0 auto 15px auto;background:#fff;border-radius:20px;padding:15px 20px;box-shadow:0 10px 30px rgba(0,0,0,0.15);display:flex;justify-content:space-between;align-items:center;">
-        <div id="btn-nav-title" style="font-weight:800;font-size:1.2rem;color:#333;cursor:pointer;">Deine Sprachwerkstatt</div>
+        <div id="app-nav" style="max-width:1200px;margin:0 auto 15px auto;background:#fff;border-radius:20px;padding:15px 20px;box-shadow:0 10px 30px rgba(0,0,0,0.15);display:flex;justify-content:space-between;align-items:center;">
+        <div id="btn-nav-title" class="nav-rainbow-title" style="cursor:pointer;">Deine Sprachwerkstatt</div>
         <div style="display:flex;gap:10px;">
             <button id="btn-nav-kinder" class="btn btn-secondary">Kinder</button>
             <button id="btn-nav-uebersicht" class="btn btn-primary">Spielübersicht</button>
@@ -24,7 +24,7 @@
                     <p>Willkommen! Hast du Lust heute spielerisch neue Worte kennenzulernen?</p>
                 </div>
             </div>
-            <div class="breadcrumb">Start → Landing</div>
+            <div class="breadcrumb"></div>
             <div class="landing-hero">
                 <div class="dice-container">
                     <div id="landing-dice" class="dice" aria-label="Spiele-Würfel">
@@ -141,9 +141,11 @@
             <div class="breadcrumb">Start → Übersicht → Wortschatz</div>
             <div id="story-word-list" class="word-list"></div>
             <div class="action-buttons">
-                <button id="btn-story-quiz-start" class="btn btn-success">Beginnen</button>
+                <button id="btn-story-quiz-start" class="btn btn-success">Weiter</button>
+                <button id="btn-story-quiz-mic" class="btn btn-secondary btn-record" title="Sprich die Frage">🎤</button>
                 <button id="btn-next-level" class="btn btn-primary" style="display:none;">Weiter</button>
             </div>
+            <div class="progress-bar"><div id="story-quiz-progress" class="progress-fill"></div></div>
         </div>
     </div>
     <div id="video-screen" class="screen">
