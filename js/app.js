@@ -1,4 +1,4 @@
- 
+  
 
 // State
 let currentChild = null;
@@ -6,6 +6,7 @@ let currentLevelIndex = 0;
 let currentSublevelIndex = 0;
 let currentLevelData = null;
 let currentSublevelData = null;
+let audioEnabled = true;
 
 // UI Elemente
 const screens = {
@@ -225,6 +226,30 @@ function setupEventListeners() {
             renderSoundCategories();
         });
     }
+    const toggleButtons = [
+        'btn-audio-toggle-story',
+        'btn-audio-toggle-memory',
+        'btn-audio-toggle-sound',
+        'btn-audio-toggle-sound-detail',
+        'btn-audio-toggle-training'
+    ];
+    toggleButtons.forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) {
+            btn.addEventListener('click', () => {
+                audioEnabled = !audioEnabled;
+                btn.textContent = audioEnabled ? 'Audio aus' : 'Audio an';
+                try { window.speechSynthesis.cancel(); } catch {}
+            });
+        }
+    });
+    const backSoundDetailBtn = document.getElementById('btn-back-sound-detail');
+    if (backSoundDetailBtn) {
+        backSoundDetailBtn.addEventListener('click', () => {
+            showScreen('sound');
+            renderSoundCategories();
+        });
+    }
     const storyMic = document.getElementById('story-mic');
     if (storyMic) {
         storyMic.addEventListener('click', () => {
@@ -237,7 +262,7 @@ function setupEventListeners() {
                 if (voice) utter.voice = voice;
                 utter.rate = 0.75;
                 utter.pitch = 1.0;
-                window.speechSynthesis.speak(utter);
+                if (audioEnabled) window.speechSynthesis.speak(utter);
             } catch {}
         });
     }
@@ -339,19 +364,38 @@ function openStoryGame() {
 }
 
 // Reim-Memory
-const MEMORY_PAIRS = [
-    { a: 'haus', b: 'maus' },
-    { a: 'hund', b: 'mund' },
-    { a: 'boot', b: 'brot' },
-    { a: 'baum', b: 'traum' },
-    { a: 'eis', b: 'kreis' },
-    { a: 'hand', b: 'sand' },
-];
+const MEMORY_LEVELS = {
+    1: [
+        { a: 'haus', b: 'maus' },
+        { a: 'hund', b: 'mund' },
+        { a: 'boot', b: 'brot' },
+        { a: 'baum', b: 'traum' },
+        { a: 'eis', b: 'kreis' },
+        { a: 'hand', b: 'sand' }
+    ],
+    2: [
+        { a: 'katze', b: 'tatze' },
+        { a: 'hahn', b: 'bahn' },
+        { a: 'garten', b: 'karten' },
+        { a: 'wiese', b: 'riese' },
+        { a: 'kiste', b: 'liste' },
+        { a: 'wolle', b: 'rolle' }
+    ],
+    3: [
+        { a: 'drache', b: 'wache' },
+        { a: 'schokolade', b: 'marmelade' },
+        { a: 'diamant', b: 'elefant' },
+        { a: 'ritter', b: 'gewitter' },
+        { a: 'regenbogen', b: 'ellenbogen' },
+        { a: 'glatt', b: 'stadt' }
+    ]
+};
 let memoryDeck = [];
 let memoryFoundPairs = 0;
 let memoryFirst = null;
 let memorySecond = null;
 let memoryLock = false;
+let memoryTotalPairs = 0;
 
 function openMemoryGame() {
     showScreen('memory');
@@ -361,20 +405,28 @@ function openMemoryGame() {
 function renderMemoryGame() {
     const resetBtn = document.getElementById('btn-memory-reset');
     if (resetBtn) resetBtn.onclick = () => buildMemoryRound();
+    const levelSelect = document.getElementById('memory-level');
+    if (levelSelect) {
+        levelSelect.onchange = () => buildMemoryRound();
+    }
     buildMemoryRound();
 }
 
 function buildMemoryRound() {
     const grid = document.getElementById('memory-grid');
     if (!grid) return;
-    const totalPairs = MEMORY_PAIRS.length;
+    const levelSelect = document.getElementById('memory-level');
+    const currentLevel = parseInt(levelSelect ? levelSelect.value : '1', 10) || 1;
+    const pairs = MEMORY_LEVELS[currentLevel] || MEMORY_LEVELS[1];
+    const totalPairs = pairs.length;
+    memoryTotalPairs = totalPairs;
     memoryDeck = [];
     memoryFoundPairs = 0;
     memoryFirst = null;
     memorySecond = null;
     memoryLock = false;
     grid.innerHTML = '';
-    MEMORY_PAIRS.forEach((p, idx) => {
+    pairs.forEach((p, idx) => {
         memoryDeck.push({ word: p.a, pairId: idx });
         memoryDeck.push({ word: p.b, pairId: idx });
     });
@@ -384,12 +436,12 @@ function buildMemoryRound() {
         card.className = 'word-card';
         card.dataset.word = item.word;
         card.dataset.pair = String(item.pairId);
-        const imgPath = `./images/level1/${item.word}.png`;
+        const imgPath = `./images/level${currentLevel}/${item.word}.png`;
         card.innerHTML = `
             <div class="word-image-wrap">
                 <div class="placeholder">?</div>
             </div>
-            <div class="word-label visually-hidden">${item.word}</div>
+            <div class="word-label visually-hidden">${item.word.charAt(0).toUpperCase() + item.word.slice(1)}</div>
         `;
         card.addEventListener('click', () => handleMemoryCardClick(card, imgPath, item.word));
         grid.appendChild(card);
@@ -436,11 +488,11 @@ function handleMemoryCardClick(card, imgPath, word) {
             if (!existing) c.querySelector('.word-image-wrap').appendChild(badge);
         });
         memoryFoundPairs++;
-        updateMemoryStatus(MEMORY_PAIRS.length);
+        updateMemoryStatus(memoryTotalPairs);
         memoryFirst = null;
         memorySecond = null;
         memoryLock = false;
-        if (memoryFoundPairs >= MEMORY_PAIRS.length) {
+        if (memoryFoundPairs >= memoryTotalPairs) {
             const info = document.getElementById('memory-info');
             if (info) info.textContent = 'Super! Alle Paare gefunden!';
         }
@@ -511,13 +563,18 @@ function renderStoryGame() {
         list.appendChild(card);
     });
     document.getElementById('story-recognition-status').textContent = 'Tippe ein Bild, dann spreche ich das Wort';
-    document.getElementById('story-mic').classList.remove('recording');
+    const sm = document.getElementById('story-mic');
+    if (sm) sm.classList.remove('recording');
     document.getElementById('story-info').textContent = `Level ${currentVocabLevel} – Tippe ein Bild und ich spreche das Wort`;
     const nextBtn = document.getElementById('btn-next-level');
     if (nextBtn) {
         nextBtn.classList.remove('btn-secondary');
         nextBtn.classList.add('btn-success');
         nextBtn.style.display = doneWords.size >= words.length && words.length ? 'inline-block' : 'none';
+    }
+    const quizStart = document.getElementById('btn-story-quiz-start');
+    if (quizStart) {
+        quizStart.onclick = () => startStoryQuiz();
     }
 }
 
@@ -714,6 +771,7 @@ function markSoundCompleted(catKey, soundId) {
 function playSoundAudio(catKey, soundId) {
     try {
         const path = `./audio/sounds/${catKey}/${soundId}.mp3`;
+        if (!audioEnabled) return;
         const audio = new Audio(path);
         audio.play();
     } catch {}
@@ -728,7 +786,7 @@ function speakWord(word) {
         if (voice) utter.voice = voice;
         utter.rate = 0.75;
         utter.pitch = 1.0;
-        window.speechSynthesis.speak(utter);
+        if (audioEnabled) window.speechSynthesis.speak(utter);
     } catch (e) {
         console.error('TTS Fehler:', e);
     }
@@ -749,6 +807,72 @@ function highlightStoryWord(word, active) {
         if (el.dataset.word === word) {
             if (active) el.classList.add('correct'); else el.classList.remove('correct');
         }
+    });
+}
+
+// Wortschatz-Quiz mit 3 Unterleveln („Zeig mir X“)
+let storyQuizActive = false;
+let storyQuizRound = 0;
+function startStoryQuiz() {
+    storyQuizActive = true;
+    storyQuizRound = 0;
+    runStoryQuizStep();
+}
+function runStoryQuizStep() {
+    const all = LEVEL_WORDS[currentVocabLevel] || [];
+    if (!all.length) return;
+    if (storyQuizRound >= 3) {
+        storyQuizActive = false;
+        document.getElementById('story-info').textContent = 'Super! Kleine Quizrunde geschafft.';
+        renderStoryGame();
+        return;
+    }
+    const pool = shuffle(all).slice(0, 3);
+    const target = pool[0];
+    document.getElementById('story-info').textContent = `Zeig mir ${target}`;
+    renderQuizOptions(target, pool);
+}
+function renderQuizOptions(target, options) {
+    const list = document.getElementById('story-word-list');
+    list.innerHTML = '';
+    const opts = shuffle(options);
+    opts.forEach((word, idx) => {
+        const lw = word.toLowerCase();
+        const imgPath = `./images/story/${lw}.png`;
+        const card = document.createElement('div');
+        card.className = 'word-card';
+        card.dataset.word = lw;
+        card.innerHTML = `
+            <div class="word-image-wrap">
+                <img src="${imgPath}" alt="${word}">
+            </div>
+            <div class="word-label">${word}</div>
+        `;
+        const imgEl = card.querySelector('img');
+        imgEl.onerror = () => {
+            imgEl.src = generatePlaceholderPng(idx, 'leicht');
+            imgEl.style.display = 'block';
+        };
+        card.addEventListener('click', () => {
+            const correct = word === target;
+            if (correct) {
+                card.classList.add('correct');
+                const wrap = card.querySelector('.word-image-wrap');
+                const badge = document.createElement('div');
+                badge.className = 'done-badge';
+                badge.textContent = '✓';
+                wrap.appendChild(badge);
+                setTimeout(() => {
+                    storyQuizRound++;
+                    runStoryQuizStep();
+                }, 700);
+            } else {
+                card.classList.remove('correct');
+                card.classList.add('active');
+                setTimeout(() => { card.classList.remove('active'); }, 400);
+            }
+        });
+        list.appendChild(card);
     });
 }
 
@@ -1307,42 +1431,15 @@ let trainingOrder = [];
 
 function handleTrainingContinuousResult(transcript) {
     const total = currentSublevelData.reim_ideen.length;
-    const missing = total - trainingRecognized.size === 1
-        ? (currentSublevelData.reim_ideen.find(w => !trainingRecognized.has(w.toLowerCase())) || '').toLowerCase()
-        : null;
-    if (missing) {
-        const spoken = speechRecognition.normalizeWord(transcript);
-        const sim = speechRecognition.calculateSimilarity(spoken, speechRecognition.normalizeWord(missing));
-        if (sim >= 0.35) {
-            trainingRecognized.add(missing);
-            trainingOrder.push(missing);
-            highlightMatchedWord(missing);
+    const res = speechRecognition.validateRhyme(transcript, currentSublevelData.reim_ideen);
+    if (res.matchedWord && res.isCorrect) {
+        const w = res.matchedWord.toLowerCase();
+        if (!trainingRecognized.has(w)) {
+            trainingRecognized.add(w);
+            trainingOrder.push(w);
+            highlightMatchedWord(w);
             const statusEl = document.getElementById('recognition-status');
             if (statusEl) statusEl.textContent = `Erkannt: ${trainingRecognized.size}/${total}`;
-        } else {
-            const res = speechRecognition.validateRhyme(transcript, currentSublevelData.reim_ideen);
-            if (res.matchedWord && res.isCorrect) {
-                const w = res.matchedWord.toLowerCase();
-                if (!trainingRecognized.has(w)) {
-                    trainingRecognized.add(w);
-                    trainingOrder.push(w);
-                    highlightMatchedWord(w);
-                    const statusEl = document.getElementById('recognition-status');
-                    if (statusEl) statusEl.textContent = `Erkannt: ${trainingRecognized.size}/${total}`;
-                }
-            }
-        }
-    } else {
-        const res = speechRecognition.validateRhyme(transcript, currentSublevelData.reim_ideen);
-        if (res.matchedWord && res.isCorrect) {
-            const w = res.matchedWord.toLowerCase();
-            if (!trainingRecognized.has(w)) {
-                trainingRecognized.add(w);
-                trainingOrder.push(w);
-                highlightMatchedWord(w);
-                const statusEl = document.getElementById('recognition-status');
-                if (statusEl) statusEl.textContent = `Erkannt: ${trainingRecognized.size}/${total}`;
-            }
         }
     }
     if (trainingRecognized.size >= total) {
