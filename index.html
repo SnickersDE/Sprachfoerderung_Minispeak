@@ -45,8 +45,8 @@
     <!-- Login Screen -->
     <div id="login-screen" class="screen">
         <div class="container">
-            <h1>🎯 Sprachförderung-Demo</h1>
-            <p class="subtitle">Wähle ein Kind aus</p>
+            <h1 class="rainbow-title">Deine Sprachwerkstatt</h1>
+            <p class="subtitle">Wer lernt heute mit dir spielerisch neue Wörter?</p>
             <div class="breadcrumb">Start</div>
             <div id="children-list" class="children-grid"></div>
         </div>
@@ -124,19 +124,15 @@
             <div class="header">
                 <div>
                     <h2>Wortschatz-Spiel</h2>
-                    <p id="story-info">Tippe ein Bild und ich spreche das Wort</p>
+                    <p id="story-info">Wähle ein Bild oder starte das kleine Quiz</p>
                 </div>
+                <button id="btn-audio-toggle-story" class="btn btn-secondary">Audio aus</button>
                 <button id="btn-end-story" class="btn btn-secondary">Zurück</button>
             </div>
             <div class="breadcrumb">Start → Übersicht → Wortschatz</div>
-            <div class="microphone-section">
-                <div class="mic-circle" id="story-mic">
-                    <div id="mic-icon">🎤</div>
-                </div>
-                <p id="story-recognition-status" class="status-text" aria-live="polite">Tippe ein Bild, dann spreche ich das Wort</p>
-            </div>
             <div id="story-word-list" class="word-list"></div>
             <div class="action-buttons">
+                <button id="btn-story-quiz-start" class="btn btn-success">Beginnen</button>
                 <button id="btn-next-level" class="btn btn-primary" style="display:none;">Weiter</button>
             </div>
         </div>
@@ -146,12 +142,19 @@
             <div class="header">
                 <div>
                     <h2>Auditives Reim-Memory</h2>
-                    <p id="memory-info">Höre das Zielwort und finde Reime</p>
+                    <p id="memory-info">Höre das Wort und finde Paare</p>
                 </div>
+                <button id="btn-audio-toggle-memory" class="btn btn-secondary">Audio aus</button>
                 <button id="btn-end-memory" class="btn btn-secondary">Zurück</button>
             </div>
             <div class="breadcrumb">Start → Übersicht → Reim-Memory</div>
             <div class="action-buttons">
+                <label for="memory-level" style="align-self:center;">Level</label>
+                <select id="memory-level" class="voice-select">
+                    <option value="1">Level 1</option>
+                    <option value="2">Level 2</option>
+                    <option value="3">Level 3</option>
+                </select>
                 <button id="btn-memory-reset" class="btn btn-secondary">🔄 Neue Runde</button>
             </div>
             <div class="progress-bar"><div id="memory-progress-fill" class="progress-fill"></div></div>
@@ -166,6 +169,7 @@
                     <h2>Geräusch erkennen</h2>
                     <p id="sound-info">Welches Geräusch hörst du? Wähle zuerst eine Kategorie aus und suche das richtige Bild zum passenden Geräusch</p>
                 </div>
+                <button id="btn-audio-toggle-sound" class="btn btn-secondary">Audio aus</button>
                 <button id="btn-end-sound" class="btn btn-secondary">Zurück</button>
             </div>
             <div class="breadcrumb">Start → Übersicht → Geräusch erkennen</div>
@@ -180,6 +184,7 @@
                     <h2 id="sound-detail-title"></h2>
                     <p id="sound-detail-info">Suche das richtige Bild zum Geräusch</p>
                 </div>
+                <button id="btn-audio-toggle-sound-detail" class="btn btn-secondary">Audio aus</button>
                 <button id="btn-back-sound-detail" class="btn btn-secondary">Zurück</button>
             </div>
             <div class="breadcrumb">Start → Übersicht → Geräusch erkennen → Detail</div>
@@ -197,6 +202,7 @@
                     <h2 id="level-title"></h2>
                     <p id="sublevel-info"></p>
                 </div>
+                <button id="btn-audio-toggle-training" class="btn btn-secondary">Audio aus</button>
                 <button id="btn-end-training" class="btn btn-secondary">Zurück</button>
             </div>
             <div class="breadcrumb">Start → Übersicht → Training</div>
@@ -209,18 +215,10 @@
                 <p class="instruction">Sage eines dieser Wörter:</p>
                 <div id="word-list" class="word-list"></div>
 
-                <div class="microphone-section">
-                    <div class="mic-circle">
-                        <div id="mic-icon">🎤</div>
-                    </div>
-                    <span id="recording-hint" class="status-text" style="display:none; margin-left: 10px;">Aufnahme an</span>
-                    <p id="recognition-status" class="status-text" aria-live="polite">Drücke auf das Mikrofon zum Starten</p>
-                </div>
-
                 <div id="word-image" class="word-image-container"></div>
 
-                <div class="action-buttons">
-                    <button id="btn-record" class="btn btn-primary btn-record">🎤</button>
+            <div class="action-buttons">
+                    <button id="btn-record" class="btn btn-primary btn-record">🎤 Drücke auf das Mikrofon zum Starten</button>
                     <button id="btn-correct" class="btn btn-success" style="display:none;">
                         ✓ Richtig
                     </button>
