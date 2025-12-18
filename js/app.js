@@ -243,13 +243,6 @@ function setupEventListeners() {
             });
         }
     });
-    const backSoundDetailBtn = document.getElementById('btn-back-sound-detail');
-    if (backSoundDetailBtn) {
-        backSoundDetailBtn.addEventListener('click', () => {
-            showScreen('sound');
-            renderSoundCategories();
-        });
-    }
     const storyMic = document.getElementById('story-mic');
     if (storyMic) {
         storyMic.addEventListener('click', () => {
@@ -1559,3 +1552,4 @@ function setupLandingDice() {
     window.addEventListener('touchmove', onMove, { passive: false });
     window.addEventListener('touchend', onUp);
 }
+
