@@ -33,6 +33,12 @@ body::before {
     padding: 40px;
     box-shadow: 0 20px 60px rgba(0,0,0,0.3);
 }
+/* Volle Transparenz für Landing & Kinderübersicht */
+#landing-screen .container,
+#login-screen .container {
+    background: transparent;
+    box-shadow: none;
+}
 
 .screen {
     display: none;
@@ -430,12 +436,12 @@ h2 {
     font-size: 2rem;
 }
 .btn-record {
-    width: 56px;
-    height: 56px;
+    min-width: 56px;
+    min-height: 56px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.6rem;
+    font-size: 1.8rem;
     padding: 0;
 }
 .recording-hint {
