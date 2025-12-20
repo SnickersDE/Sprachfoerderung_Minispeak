@@ -8,11 +8,19 @@
     <link rel="stylesheet" href="./css/styles.css">
 </head>
 <body>
-    <div id="app-nav" style="max-width:1200px;margin:0 auto 15px auto;background:#fff;border-radius:20px;padding:15px 20px;box-shadow:0 10px 30px rgba(0,0,0,0.15);display:flex;justify-content:space-between;align-items:center;">
-        <img id="btn-nav-logo" src="./images/logo-square.png" alt="Logo" class="nav-logo" style="cursor:pointer;">
-        <div style="display:flex;gap:10px;">
+    <div id="app-titlebar">
+        <img id="nav-title-img" class="title-image nav-title-image" src="./images/title.png" alt="Deine Sprachwerkstatt" data-fallback="Deine Sprachwerkstatt">
+    </div>
+    <div id="app-nav" style="max-width:1200px;margin:0 auto 15px auto;background:#fff;border-radius:20px;padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,0.15);display:flex;justify-content:space-between;align-items:center;gap:10px;">
+        <div class="nav-left" style="display:flex;gap:10px;align-items:center;">
+            <button id="btn-nav-back" class="btn btn-error" title="Zurück">⬅ Zurück</button>
+        </div>
+        <div class="nav-center" style="display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;">
             <button id="btn-nav-kinder" class="btn btn-secondary">Kinder</button>
             <button id="btn-nav-uebersicht" class="btn btn-primary">Spielübersicht</button>
+        </div>
+        <div class="nav-right" style="display:flex;gap:10px;align-items:center;">
+            <button id="btn-nav-audio" class="btn btn-secondary" title="Audio">🔊</button>
         </div>
     </div>
     <!-- Landing Screen -->
@@ -20,33 +28,31 @@
         <div class="container">
             <div class="header">
                 <div style="width:100%;display:flex;justify-content:center;">
-                    <img id="landing-title-img" class="title-image" src="./images/title.png" alt="Deine Sprachwerkstatt">
+                    <img id="landing-title-img" class="title-image" src="./images/title.png" alt="Deine Sprachwerkstatt" data-fallback="Deine Sprachwerkstatt">
                 </div>
             </div>
             <div class="breadcrumb"></div>
             <div class="landing-hero">
                 <div class="dice-container">
                     <div id="landing-dice" class="dice" aria-label="Spiele-Würfel">
-                        <div class="dice-face face-front">Wortschatz</div>
-                        <div class="dice-face face-right">Reime</div>
-                        <div class="dice-face face-back">Memory</div>
-                        <div class="dice-face face-left">Töne</div>
-                        <div class="dice-face face-top">Spiele</div>
-                        <div class="dice-face face-bottom">Start</div>
+                        <div class="dice-face face-front"><img class="dice-face-img" src="./images/dice/wortschatz.png" alt="Wortschatz" data-fallback="Wortschatz"></div>
+                        <div class="dice-face face-right"><img class="dice-face-img" src="./images/dice/reime.png" alt="Reime" data-fallback="Reime"></div>
+                        <div class="dice-face face-back"><img class="dice-face-img" src="./images/dice/memory.png" alt="Memory" data-fallback="Memory"></div>
+                        <div class="dice-face face-left"><img class="dice-face-img" src="./images/dice/toene.png" alt="Töne" data-fallback="Töne"></div>
+                        <div class="dice-face face-top"><img class="dice-face-img" src="./images/dice/spiele.png" alt="Spiele" data-fallback="Spiele"></div>
+                        <div class="dice-face face-bottom"><img class="dice-face-img" src="./images/dice/start.png" alt="Start" data-fallback="Start"></div>
                     </div>
                 </div>
             </div>
             <div class="action-buttons">
-                <button id="btn-landing-continue" class="btn btn-primary">Beginnen</button>
+                <button id="btn-landing-continue" class="btn btn-success">starten</button>
+                <button id="btn-landing-experts" class="btn btn-warning">Für Fachkräfte und Eltern</button>
             </div>
         </div>
     </div>
     <!-- Login Screen -->
     <div id="login-screen" class="screen">
         <div class="container">
-            <div class="header" style="justify-content:center;">
-                <img id="login-title-img" class="title-image" src="./images/title.png" alt="Deine Sprachwerkstatt">
-            </div>
             <div id="children-list" class="children-grid"></div>
         </div>
     </div>
@@ -64,7 +70,6 @@
                 </div>
                 <div style="display:flex; gap:10px;">
                     <button id="btn-reset-progress" class="btn btn-secondary">Fortschritt zurücksetzen</button>
-                    <button id="btn-logout" class="btn btn-secondary">Zurück</button>
                 </div>
             </div>
             <div class="breadcrumb">Start → Übersicht</div>
@@ -132,20 +137,18 @@
             <div class="header">
                 <div>
                     <h2>Wortschatz-Spiel</h2>
-                    <p id="story-info" style="text-align:center;">Wähle ein Bild oder starte das kleine Quiz</p>
                 </div>
-                <button id="btn-audio-toggle-story" class="btn btn-secondary">Audio aus</button>
-                <button id="btn-end-story" class="btn btn-secondary">Zurück</button>
             </div>
             <div class="breadcrumb">Start → Übersicht → Wortschatz</div>
+            <p id="story-info" class="screen-description">Wähle ein Bild oder starte das kleine Quiz</p>
             <div id="story-word-list" class="word-list"></div>
             <div class="action-buttons">
-                <button id="btn-story-quiz-back" class="btn btn-error" title="Zurück">⬅</button>
-                <button id="btn-story-quiz-start" class="btn btn-success">Beginne das Spiel</button>
-                <button id="btn-story-quiz-mic" class="btn btn-success" title="Frage vorlesen">❓</button>
+                <button id="btn-story-quiz-back" class="btn btn-error" title="Neu würfeln" style="display:none;">🎲 Neu würfeln</button>
+                <button id="btn-story-quiz-start" class="btn btn-success">Weiter</button>
+                <button id="btn-story-quiz-mic" class="btn btn-success" title="Frage vorlesen" style="display:none;">zeig mir?</button>
                 <button id="btn-next-level" class="btn btn-primary" style="display:none;">Weiter</button>
             </div>
-            <div class="progress-bar"><div id="story-quiz-progress" class="progress-fill"></div></div>
+            <div id="story-quiz-progress-wrap" class="progress-bar" style="display:none;"><div id="story-quiz-progress" class="progress-fill"></div></div>
         </div>
     </div>
     <div id="video-screen" class="screen">
@@ -153,19 +156,20 @@
             <div class="header">
                 <div>
                     <h2>Erkenne im Video</h2>
-                    <p id="video-info">Klicke auf das Video, schaue es an und starte dann das Quiz</p>
                 </div>
-                <button id="btn-audio-toggle-video" class="btn btn-secondary">Audio aus</button>
-                <button id="btn-end-video" class="btn btn-secondary">Zurück</button>
             </div>
             <div class="breadcrumb">Start → Übersicht → Erkenne im Video</div>
+            <p id="video-info" class="screen-description">Klicke auf das Video, schaue es an und starte dann das Quiz</p>
+            <div class="progress-bar"><div id="video-progress-fill" class="progress-fill"></div></div>
             <div class="word-image-wrap" style="height:320px;">
                 <video id="video-player" style="width:100%;height:100%;object-fit:cover;" controls></video>
             </div>
             <div class="action-buttons">
+                <button id="btn-video-prev" class="btn btn-error" title="Video zurück">⬅</button>
                 <button id="btn-video-quiz-start" class="btn btn-success">Beginnen</button>
-                <button id="btn-video-next" class="btn btn-primary">Weiter</button>
+                <button id="btn-video-next" class="btn btn-primary">nächstes Video</button>
             </div>
+            <div id="video-question" class="center-question" style="display:none;">Was hast du im Video gesehen?</div>
             <div id="video-card-grid" class="word-list"></div>
         </div>
     </div>
@@ -174,18 +178,23 @@
             <div class="header">
                 <div>
                     <h2>Auditives Reim-Memory</h2>
-                    <p id="memory-info">Höre das Wort und finde Paare</p>
                 </div>
-                <button id="btn-audio-toggle-memory" class="btn btn-secondary">Audio aus</button>
-                <button id="btn-end-memory" class="btn btn-secondary">Zurück</button>
             </div>
             <div class="breadcrumb">Start → Übersicht → Reim-Memory</div>
+            <p id="memory-info" class="screen-description">Höre das Wort und finde Paare</p>
             <div class="action-buttons">
                 <label for="memory-level" style="align-self:center;">Level</label>
                 <select id="memory-level" class="voice-select">
-                    <option value="1">Level 1</option>
-                    <option value="2">Level 2</option>
-                    <option value="3">Level 3</option>
+                    <option value="1">Tiere</option>
+                    <option value="2">Alltag</option>
+                    <option value="3">Musik</option>
+                    <option value="4">Baustelle</option>
+                    <option value="5">Krankenhaus</option>
+                    <option value="6">Polizei</option>
+                    <option value="7">Feuerwehr</option>
+                    <option value="8">Schule</option>
+                    <option value="9">Klamotten</option>
+                    <option value="10">Im Wald</option>
                 </select>
                 <button id="btn-memory-reset" class="btn btn-secondary">🔄 Neue Runde</button>
             </div>
@@ -199,12 +208,10 @@
             <div class="header">
                 <div>
                     <h2>Geräusch erkennen</h2>
-                    <p id="sound-info">Welches Geräusch hörst du? Wähle zuerst eine Kategorie aus und suche das richtige Bild zum passenden Geräusch</p>
                 </div>
-                <button id="btn-audio-toggle-sound" class="btn btn-secondary">Audio aus</button>
-                <button id="btn-end-sound" class="btn btn-secondary">Zurück</button>
             </div>
             <div class="breadcrumb">Start → Übersicht → Geräusch erkennen</div>
+            <p id="sound-info" class="screen-description">Welches Geräusch hörst du? Wähle zuerst eine Kategorie aus und suche das richtige Bild zum passenden Geräusch</p>
             <div class="progress-bar"><div id="sound-progress-fill" class="progress-fill"></div></div>
             <div id="sound-category-grid" class="levels-grid"></div>
         </div>
@@ -214,16 +221,38 @@
             <div class="header">
                 <div>
                     <h2 id="sound-detail-title"></h2>
-                    <p id="sound-detail-info">Suche das richtige Bild zum Geräusch</p>
                 </div>
-                <button id="btn-audio-toggle-sound-detail" class="btn btn-secondary">Audio aus</button>
-                <button id="btn-back-sound-detail" class="btn btn-secondary">Zurück</button>
             </div>
             <div class="breadcrumb">Start → Übersicht → Geräusch erkennen → Detail</div>
+            <p id="sound-detail-info" class="screen-description">Suche das richtige Bild zum Geräusch</p>
             <div class="action-buttons">
                 <button id="btn-sound-play" class="btn btn-success">🟢 Geräusch abspielen</button>
             </div>
             <div id="sound-detail-grid" class="word-list"></div>
+        </div>
+    </div>
+    <div id="forum-screen" class="screen">
+        <div class="container">
+            <div class="header">
+                <div>
+                    <h2>Forum</h2>
+                </div>
+            </div>
+            <div class="breadcrumb">Start → Für Fachkräfte und Eltern → Forum</div>
+            <p class="screen-description">Wähle ein Thema aus und lies den Beitrag.</p>
+            <div id="forum-content"></div>
+        </div>
+    </div>
+    <div id="videos-screen" class="screen">
+        <div class="container">
+            <div class="header">
+                <div>
+                    <h2>Videos</h2>
+                </div>
+            </div>
+            <div class="breadcrumb">Start → Für Fachkräfte und Eltern → Videos</div>
+            <p class="screen-description">Beispielhafte Video-Beiträge mit kurzen Erklärtexten.</p>
+            <div id="videos-content"></div>
         </div>
     </div>
     <!-- Training Screen -->
@@ -234,8 +263,6 @@
                     <h2 id="level-title"></h2>
                     <p id="sublevel-info"></p>
                 </div>
-                <button id="btn-audio-toggle-training" class="btn btn-secondary">Audio aus</button>
-                <button id="btn-end-training" class="btn btn-secondary">Zurück</button>
             </div>
             <div class="breadcrumb">Start → Übersicht → Training</div>
             
@@ -248,6 +275,14 @@
                 <div id="word-list" class="word-list"></div>
 
                 <div id="word-image" class="word-image-container"></div>
+
+                <div class="microphone-section">
+                    <div class="mic-circle" role="button" tabindex="0" aria-label="Aufnahme starten">
+                        <span id="mic-icon">🎤</span>
+                    </div>
+                    <span id="recording-hint" class="recording-hint" style="display:none;">Sprich jetzt…</span>
+                    <div id="recognition-status" class="screen-description" style="margin-top:10px;"></div>
+                </div>
 
             <div class="action-buttons">
                     <button id="btn-record" class="btn btn-primary btn-record">🎤 Starten</button>
