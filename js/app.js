@@ -7,6 +7,8 @@ let currentSublevelIndex = 0;
 let currentLevelData = null;
 let currentSublevelData = null;
 let audioEnabled = true;
+let currentScreenName = 'landing';
+let navMode = 'kids';
 
 // UI Elemente
 const screens = {
@@ -17,8 +19,10 @@ const screens = {
     story: document.getElementById('story-screen'),
     memory: document.getElementById('memory-screen'),
     sound: document.getElementById('sound-screen'),
-    sound_detail: document.getElementById('sound-detail-screen')
-    ,video: document.getElementById('video-screen')
+    sound_detail: document.getElementById('sound-detail-screen'),
+    video: document.getElementById('video-screen'),
+    forum: document.getElementById('forum-screen'),
+    videos: document.getElementById('videos-screen')
 };
 
 // Initialisierung
@@ -27,6 +31,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // Warte auf DataManager
     await waitForDataManager();
+
+    setupImagePlaceholders();
     
     // Zeige Landing initial
     showScreen('landing');
@@ -38,6 +44,39 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     console.log('✅ App bereit!');
 });
+
+function svgPlaceholderDataUrl(label, variant) {
+    const safeLabel = String(label || '').slice(0, 30);
+    if (variant === 'title') {
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="280" viewBox="0 0 1200 280"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffe259" offset="0"/><stop stop-color="#ffa751" offset="1"/></linearGradient></defs><rect x="0" y="0" width="1200" height="280" rx="48" fill="url(#g)"/><rect x="16" y="16" width="1168" height="248" rx="40" fill="rgba(255,255,255,0.72)"/><text x="600" y="172" text-anchor="middle" font-family="system-ui,-apple-system,'Segoe UI',Arial,sans-serif" font-size="78" font-weight="800" fill="#1a1a1a">${safeLabel}</text></svg>`;
+        return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+    }
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="260" height="260" viewBox="0 0 260 260"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffffff" offset="0"/><stop stop-color="#f5f5ff" offset="1"/></linearGradient></defs><rect x="0" y="0" width="260" height="260" rx="44" fill="url(#g)"/><rect x="10" y="10" width="240" height="240" rx="38" fill="rgba(255,255,255,0.9)" stroke="rgba(0,0,0,0.08)" stroke-width="4"/><text x="130" y="145" text-anchor="middle" font-family="system-ui,-apple-system,'Segoe UI',Arial,sans-serif" font-size="34" font-weight="800" fill="#1a1a1a">${safeLabel}</text></svg>`;
+    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
+function setupImagePlaceholders() {
+    const titleImgs = [
+        document.getElementById('nav-title-img'),
+        document.getElementById('landing-title-img')
+    ].filter(Boolean);
+
+    titleImgs.forEach(img => {
+        const label = img.dataset.fallback || img.alt || 'Sprachwerkstatt';
+        img.onerror = () => {
+            img.onerror = null;
+            img.src = svgPlaceholderDataUrl(label, 'title');
+        };
+    });
+
+    document.querySelectorAll('img.dice-face-img').forEach(img => {
+        const label = img.dataset.fallback || img.alt || '';
+        img.onerror = () => {
+            img.onerror = null;
+            img.src = svgPlaceholderDataUrl(label, 'dice');
+        };
+    });
+}
 
 // Warte bis DataManager geladen ist
 function waitForDataManager() {
@@ -64,10 +103,23 @@ function waitForDataManager() {
 
 // Event Listeners
 function setupEventListeners() {
-    // Logout
-    document.getElementById('btn-logout').addEventListener('click', () => {
-        showScreen('login');
-    });
+    const navBack = document.getElementById('btn-nav-back');
+    if (navBack) {
+        navBack.addEventListener('click', () => {
+            try { window.speechSynthesis.cancel(); } catch {}
+            handleNavBack();
+        });
+    }
+
+    const navAudio = document.getElementById('btn-nav-audio');
+    if (navAudio) {
+        navAudio.addEventListener('click', () => {
+            audioEnabled = !audioEnabled;
+            updateNavAudioIcon();
+            try { window.speechSynthesis.cancel(); } catch {}
+        });
+        updateNavAudioIcon();
+    }
     
     const resetBtn = document.getElementById('btn-reset-progress');
     if (resetBtn) {
@@ -78,16 +130,23 @@ function setupEventListeners() {
         });
     }
 
-    // Training beenden
-    document.getElementById('btn-end-training').addEventListener('click', () => {
-        showScreen('overview');
-        renderLevelsGrid();
-    });
-
     // Aufnahme-Button
-    document.getElementById('btn-record').addEventListener('click', () => {
-        startRecording();
-    });
+    const btnRecord = document.getElementById('btn-record');
+    if (btnRecord) {
+        btnRecord.addEventListener('click', () => {
+            startRecording();
+        });
+    }
+    const micCircle = document.querySelector('.mic-circle');
+    if (micCircle) {
+        micCircle.addEventListener('click', () => startRecording());
+        micCircle.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                startRecording();
+            }
+        });
+    }
     const nextSubBtn = document.getElementById('btn-next-sublevel');
     if (nextSubBtn) {
         nextSubBtn.addEventListener('click', () => {
@@ -107,22 +166,26 @@ function setupEventListeners() {
     }
     const navKinder = document.getElementById('btn-nav-kinder');
     const navOverview = document.getElementById('btn-nav-uebersicht');
-    const navLogo = document.getElementById('btn-nav-logo');
     if (navKinder) {
         navKinder.addEventListener('click', () => {
+            if (navMode === 'experts') {
+                showScreen('forum');
+                renderForum();
+                return;
+            }
             showScreen('login');
             renderChildrenList();
         });
     }
     if (navOverview) {
         navOverview.addEventListener('click', () => {
+            if (navMode === 'experts') {
+                showScreen('videos');
+                renderVideos();
+                return;
+            }
             showScreen('overview');
             renderLevelsGrid();
-        });
-    }
-    if (navLogo) {
-        navLogo.addEventListener('click', () => {
-            showScreen('landing');
         });
     }
     const landingContinue = document.getElementById('btn-landing-continue');
@@ -130,6 +193,13 @@ function setupEventListeners() {
         landingContinue.addEventListener('click', () => {
             showScreen('login');
             renderChildrenList();
+        });
+    }
+    const landingExperts = document.getElementById('btn-landing-experts');
+    if (landingExperts) {
+        landingExperts.addEventListener('click', () => {
+            showScreen('forum');
+            renderForum();
         });
     }
     // Landing-Würfel Interaktion erneut aktivieren beim Navigieren
@@ -234,31 +304,6 @@ function setupEventListeners() {
             renderSoundCategories();
         });
     }
-    const toggleButtons = [
-        'btn-audio-toggle-story',
-        'btn-audio-toggle-memory',
-        'btn-audio-toggle-sound',
-        'btn-audio-toggle-sound-detail',
-        'btn-audio-toggle-training'
-    ];
-    toggleButtons.forEach(id => {
-        const btn = document.getElementById(id);
-        if (btn) {
-            btn.addEventListener('click', () => {
-                audioEnabled = !audioEnabled;
-                btn.textContent = audioEnabled ? 'Audio aus' : 'Audio an';
-                try { window.speechSynthesis.cancel(); } catch {}
-            });
-        }
-    });
-    const btnVideoToggle = document.getElementById('btn-audio-toggle-video');
-    if (btnVideoToggle) {
-        btnVideoToggle.addEventListener('click', () => {
-            audioEnabled = !audioEnabled;
-            btnVideoToggle.textContent = audioEnabled ? 'Audio aus' : 'Audio an';
-            try { window.speechSynthesis.cancel(); } catch {}
-        });
-    }
     const endVideoBtn = document.getElementById('btn-end-video');
     if (endVideoBtn) {
         endVideoBtn.addEventListener('click', () => {
@@ -273,22 +318,9 @@ function setupEventListeners() {
     if (videoNextBtn) {
         videoNextBtn.addEventListener('click', () => nextVideoStep());
     }
-    const storyMic = document.getElementById('story-mic');
-    if (storyMic) {
-        storyMic.addEventListener('click', () => {
-            const srs = document.getElementById('story-recognition-status');
-            if (srs) srs.textContent = 'Ich spreche langsam: Tippe ein Bild!';
-            try {
-                window.speechSynthesis.cancel();
-                const utter = new SpeechSynthesisUtterance('Tippe ein Bild, dann sage ich das Wort.');
-                utter.lang = 'de-DE';
-                const voice = pickKatjaVoice();
-                if (voice) utter.voice = voice;
-                utter.rate = 0.75;
-                utter.pitch = 1.0;
-                if (audioEnabled) window.speechSynthesis.speak(utter);
-            } catch {}
-        });
+    const videoPrevBtn = document.getElementById('btn-video-prev');
+    if (videoPrevBtn) {
+        videoPrevBtn.addEventListener('click', () => prevVideoStep());
     }
     const nextBtn = document.getElementById('btn-next-level');
     if (nextBtn) {
@@ -309,16 +341,70 @@ function setupEventListeners() {
     }
 }
 
+function setNavMode(mode) {
+    navMode = mode;
+    const navKinder = document.getElementById('btn-nav-kinder');
+    const navOverview = document.getElementById('btn-nav-uebersicht');
+    if (navKinder) navKinder.textContent = mode === 'experts' ? 'Forum' : 'Kinder';
+    if (navOverview) navOverview.textContent = mode === 'experts' ? 'Videos' : 'Spielübersicht';
+}
+
+function updateNavAudioIcon() {
+    const navAudio = document.getElementById('btn-nav-audio');
+    if (!navAudio) return;
+    navAudio.textContent = audioEnabled ? '🔊' : '🔇';
+    navAudio.setAttribute('aria-label', audioEnabled ? 'Audio an' : 'Audio aus');
+}
+
+function handleNavBack() {
+    if (currentScreenName === 'landing') return;
+    if (currentScreenName === 'login') {
+        showScreen('landing');
+        return;
+    }
+    if (currentScreenName === 'overview') {
+        showScreen('login');
+        renderChildrenList();
+        return;
+    }
+    if (currentScreenName === 'sound_detail') {
+        showScreen('sound');
+        renderSoundCategories();
+        return;
+    }
+    if (currentScreenName === 'training') {
+        showScreen('overview');
+        renderLevelsGrid();
+        return;
+    }
+    if (currentScreenName === 'forum') {
+        showScreen('landing');
+        return;
+    }
+    if (currentScreenName === 'videos') {
+        showScreen('forum');
+        renderForum();
+        return;
+    }
+    showScreen('overview');
+}
+
 // Screen Navigation
 function showScreen(screenName) {
     Object.keys(screens).forEach(name => {
         screens[name].classList.remove('active');
     });
     screens[screenName].classList.add('active');
+    currentScreenName = screenName;
     const nav = document.getElementById('app-nav');
     if (nav) {
         nav.style.display = screenName === 'landing' ? 'none' : 'flex';
     }
+    const titlebar = document.getElementById('app-titlebar');
+    if (titlebar) {
+        titlebar.style.display = screenName === 'landing' ? 'none' : 'flex';
+    }
+    setNavMode(screenName === 'forum' || screenName === 'videos' ? 'experts' : 'kids');
 }
 
 // Render Kinder-Liste
@@ -331,7 +417,7 @@ function renderChildrenList() {
     if (!children || children.length === 0) {
         const empty = document.createElement('div');
         empty.className = 'info-box';
-        empty.innerHTML = `<p>Keine Kinderdaten gefunden. Bitte aktualisiere die Seite oder prüfe die Datei <code>./data/users.json</code>.</p>`;
+        empty.innerHTML = `<p>Keine Kinderdaten gefunden. Bitte aktualisiere die Seite.</p>`;
         container.appendChild(empty);
         return;
     }
@@ -369,7 +455,6 @@ function selectChild(childId) {
     renderLevelsGrid();
 }
 
-let storySelected = [];
 const LEVEL_WORDS = {
     1: ['Haus','Laus','Maus','Auto','Seil','Loch','Meer','Fuß','Tisch','Buch','Uhr','Stuhl','Turm','Pferd'],
     2: ['Papa','Mama','Ritter','Schuhe','Hallo','Wolke','Lampe','Koffer','Tasche','Fenster','Spielzeug','Einhorn','Katze','Tatze'],
@@ -378,13 +463,8 @@ const LEVEL_WORDS = {
 let currentVocabLevel = 1;
 let doneWords = new Set();
 let activeTargetWord = null;
-let openAiKey = localStorage.getItem('openai_key') || '';
-let readingActive = false;
-let readingShown = new Set();
-let readingTargets = [];
 
 function openStoryGame() {
-    storySelected = [];
     showScreen('story');
     renderStoryGame();
 }
@@ -392,28 +472,84 @@ function openStoryGame() {
 // Reim-Memory
 const MEMORY_LEVELS = {
     1: [
-        { a: 'haus', b: 'maus' },
+        { a: 'katze', b: 'tatze' },
         { a: 'hund', b: 'mund' },
-        { a: 'boot', b: 'brot' },
-        { a: 'baum', b: 'traum' },
-        { a: 'eis', b: 'kreis' },
-        { a: 'hand', b: 'sand' }
+        { a: 'hahn', b: 'bahn' },
+        { a: 'maus', b: 'laus' },
+        { a: 'kuh', b: 'schuh' },
+        { a: 'ente', b: 'rente' }
     ],
     2: [
-        { a: 'katze', b: 'tatze' },
-        { a: 'hahn', b: 'bahn' },
-        { a: 'garten', b: 'karten' },
-        { a: 'wiese', b: 'riese' },
+        { a: 'haus', b: 'maus' },
+        { a: 'hand', b: 'sand' },
+        { a: 'tisch', b: 'fisch' },
         { a: 'kiste', b: 'liste' },
-        { a: 'wolle', b: 'rolle' }
+        { a: 'tasse', b: 'klasse' },
+        { a: 'lampe', b: 'rampe' }
     ],
     3: [
-        { a: 'drache', b: 'wache' },
-        { a: 'schokolade', b: 'marmelade' },
-        { a: 'diamant', b: 'elefant' },
-        { a: 'ritter', b: 'gewitter' },
-        { a: 'regenbogen', b: 'ellenbogen' },
-        { a: 'glatt', b: 'stadt' }
+        { a: 'noten', b: 'boten' },
+        { a: 'chor', b: 'tor' },
+        { a: 'takt', b: 'pakt' },
+        { a: 'klang', b: 'drang' },
+        { a: 'saite', b: 'weite' },
+        { a: 'note', b: 'rote' }
+    ],
+    4: [
+        { a: 'kran', b: 'plan' },
+        { a: 'stein', b: 'bein' },
+        { a: 'mauer', b: 'bauer' },
+        { a: 'zement', b: 'talent' },
+        { a: 'laster', b: 'pflaster' },
+        { a: 'eimer', b: 'reimer' }
+    ],
+    5: [
+        { a: 'pille', b: 'brille' },
+        { a: 'fieber', b: 'lieber' },
+        { a: 'pflege', b: 'wege' },
+        { a: 'narkose', b: 'rose' },
+        { a: 'spritze', b: 'muetze' },
+        { a: 'kur', b: 'uhr' }
+    ],
+    6: [
+        { a: 'wagen', b: 'sagen' },
+        { a: 'licht', b: 'pflicht' },
+        { a: 'streife', b: 'reife' },
+        { a: 'taeter', b: 'spaeter' },
+        { a: 'alarm', b: 'warm' },
+        { a: 'funk', b: 'trunk' }
+    ],
+    7: [
+        { a: 'leiter', b: 'weiter' },
+        { a: 'schlauch', b: 'bauch' },
+        { a: 'brand', b: 'rand' },
+        { a: 'flamme', b: 'klamme' },
+        { a: 'rettung', b: 'bettung' },
+        { a: 'sirene', b: 'szene' }
+    ],
+    8: [
+        { a: 'tafel', b: 'stapel' },
+        { a: 'stift', b: 'gift' },
+        { a: 'lernen', b: 'sterne' },
+        { a: 'lesen', b: 'wesen' },
+        { a: 'buch', b: 'tuch' },
+        { a: 'pause', b: 'maus' }
+    ],
+    9: [
+        { a: 'hose', b: 'rose' },
+        { a: 'mantel', b: 'handel' },
+        { a: 'schal', b: 'wal' },
+        { a: 'kappe', b: 'klappe' },
+        { a: 'socke', b: 'glocke' },
+        { a: 'hemd', b: 'fremd' }
+    ],
+    10: [
+        { a: 'baum', b: 'traum' },
+        { a: 'lichtung', b: 'richtung' },
+        { a: 'pilz', b: 'filz' },
+        { a: 'fuchs', b: 'luchs' },
+        { a: 'moos', b: 'los' },
+        { a: 'tanne', b: 'pfanne' }
     ]
 };
 let memoryDeck = [];
@@ -459,15 +595,24 @@ function buildMemoryRound() {
     const deck = shuffle(memoryDeck);
     deck.forEach((item, i) => {
         const card = document.createElement('div');
-        card.className = 'word-card';
+        card.className = 'word-card memory-card';
         card.dataset.word = item.word;
         card.dataset.pair = String(item.pairId);
         const imgPath = `./images/level${currentLevel}/${item.word}.png`;
         card.innerHTML = `
-            <div class="word-image-wrap">
-                <div class="placeholder">?</div>
+            <div class="memory-card-inner">
+                <div class="memory-card-front">
+                    <div class="word-image-wrap">
+                        <div class="placeholder">?</div>
+                    </div>
+                </div>
+                <div class="memory-card-back">
+                    <div class="word-image-wrap">
+                        <div class="placeholder">?</div>
+                    </div>
+                    <div class="word-label visually-hidden">${item.word.charAt(0).toUpperCase() + item.word.slice(1)}</div>
+                </div>
             </div>
-            <div class="word-label visually-hidden">${item.word.charAt(0).toUpperCase() + item.word.slice(1)}</div>
         `;
         card.addEventListener('click', () => handleMemoryCardClick(card, imgPath, item.word));
         grid.appendChild(card);
@@ -478,22 +623,20 @@ function buildMemoryRound() {
 function handleMemoryCardClick(card, imgPath, word) {
     if (memoryLock || card.classList.contains('found')) return;
     speakWord(word);
-    const wrap = card.querySelector('.word-image-wrap');
-    const label = card.querySelector('.word-label');
+    const wrap = card.querySelector('.memory-card-back .word-image-wrap');
+    const label = card.querySelector('.memory-card-back .word-label');
     const img = new Image();
     img.src = imgPath;
     img.alt = word;
     img.onerror = () => {
-        wrap.innerHTML = '';
-        const ph = document.createElement('div');
-        ph.className = 'placeholder';
-        ph.textContent = '?';
-        wrap.appendChild(ph);
+        if (!wrap) return;
+        wrap.innerHTML = '<div class="placeholder">?</div>';
     };
     img.onload = () => {
+        if (!wrap) return;
         wrap.innerHTML = '';
         wrap.appendChild(img);
-        label.classList.remove('visually-hidden');
+        if (label) label.classList.remove('visually-hidden');
     };
     card.classList.add('active');
     if (!memoryFirst) {
@@ -511,7 +654,8 @@ function handleMemoryCardClick(card, imgPath, word) {
             badge.className = 'done-badge';
             badge.textContent = '✓';
             const existing = c.querySelector('.done-badge');
-            if (!existing) c.querySelector('.word-image-wrap').appendChild(badge);
+            const backWrap = c.querySelector('.memory-card-back .word-image-wrap');
+            if (!existing && backWrap) backWrap.appendChild(badge);
         });
         memoryFoundPairs++;
         updateMemoryStatus(memoryTotalPairs);
@@ -525,16 +669,16 @@ function handleMemoryCardClick(card, imgPath, word) {
     } else {
         setTimeout(() => {
             [memoryFirst, memorySecond].forEach(c => {
-                const w = c.querySelector('.word-image-wrap');
-                const l = c.querySelector('.word-label');
-                w.innerHTML = '<div class="placeholder">?</div>';
-                l.classList.add('visually-hidden');
+                const w = c.querySelector('.memory-card-back .word-image-wrap');
+                const l = c.querySelector('.memory-card-back .word-label');
+                if (w) w.innerHTML = '<div class="placeholder">?</div>';
+                if (l) l.classList.add('visually-hidden');
                 c.classList.remove('active');
             });
             memoryFirst = null;
             memorySecond = null;
             memoryLock = false;
-        }, 900);
+        }, 950);
     }
 }
 
@@ -591,8 +735,6 @@ function renderStoryGame() {
     });
     const srs6 = document.getElementById('story-recognition-status');
     if (srs6) srs6.textContent = 'Tippe ein Bild, dann spreche ich das Wort';
-    const sm = document.getElementById('story-mic');
-    if (sm) sm.classList.remove('recording');
     document.getElementById('story-info').textContent = `Level ${currentVocabLevel} – Tippe ein Bild und ich spreche das Wort`;
     const nextBtn = document.getElementById('btn-next-level');
     if (nextBtn) {
@@ -615,8 +757,15 @@ function renderStoryGame() {
     }
     const quizBack = document.getElementById('btn-story-quiz-back');
     if (quizBack) {
-        quizBack.onclick = () => prevStoryQuizStep();
+        quizBack.onclick = () => {
+            if (!storyQuizActive) return;
+            runStoryQuizStep();
+        };
     }
+    const quizWrap = document.getElementById('story-quiz-progress-wrap');
+    if (quizWrap) quizWrap.style.display = storyQuizActive ? 'block' : 'none';
+    if (quizMic) quizMic.style.display = storyQuizActive ? 'inline-block' : 'none';
+    if (quizBack) quizBack.style.display = storyQuizActive ? 'inline-block' : 'none';
 }
 
 const SOUND_CATEGORIES = {
@@ -825,7 +974,7 @@ function speakWord(word) {
         utter.lang = 'de-DE';
         const voice = pickKatjaVoice();
         if (voice) utter.voice = voice;
-        utter.rate = 0.9;
+        utter.rate = 0.7;
         utter.pitch = 1.1;
         if (audioEnabled) window.speechSynthesis.speak(utter);
     } catch (e) {
@@ -886,6 +1035,12 @@ function runStoryQuizStep() {
     document.getElementById('story-info').textContent = `Zeig mir: ${currentQuizTarget}?`;
     const progressFill = document.getElementById('story-quiz-progress');
     if (progressFill) progressFill.style.width = `${Math.round((storyQuizRound/5)*100)}%`;
+    const quizWrap = document.getElementById('story-quiz-progress-wrap');
+    if (quizWrap) quizWrap.style.display = 'block';
+    const quizMic = document.getElementById('btn-story-quiz-mic');
+    if (quizMic) quizMic.style.display = 'inline-block';
+    const quizBack = document.getElementById('btn-story-quiz-back');
+    if (quizBack) quizBack.style.display = 'inline-block';
     renderQuizOptions(currentQuizTarget, pool);
 }
 function renderQuizOptions(target, options) {
@@ -920,7 +1075,7 @@ function renderQuizOptions(target, options) {
                 badge.className = 'done-badge';
                 badge.textContent = '✓';
                 wrap.appendChild(badge);
-                if (nextBtn) { nextBtn.disabled = false; nextBtn.textContent = 'nächstes level'; }
+                if (nextBtn) { nextBtn.disabled = false; nextBtn.textContent = 'nächste Frage'; }
             } else {
                 card.classList.remove('correct');
                 card.classList.add('active');
@@ -964,6 +1119,8 @@ function renderVideoStep() {
     const player = document.getElementById('video-player');
     const info = document.getElementById('video-info');
     if (info) info.textContent = 'Klicke auf das Video, schaue es an und starte dann das Quiz';
+    const q = document.getElementById('video-question');
+    if (q) q.style.display = 'none';
     if (player) {
         player.src = v.src;
         player.load();
@@ -972,15 +1129,26 @@ function renderVideoStep() {
     if (grid) grid.innerHTML = '';
     const next = document.getElementById('btn-video-next');
     if (next) next.disabled = true;
+    const quizStart = document.getElementById('btn-video-quiz-start');
+    if (quizStart) quizStart.disabled = false;
+    const fill = document.getElementById('video-progress-fill');
+    if (fill) {
+        const pct = Math.round(((videoIndex + 1) / VIDEO_LEVELS.length) * 100);
+        fill.style.width = `${pct}%`;
+    }
 }
 function startVideoQuiz() {
     const v = VIDEO_LEVELS[videoIndex];
     const info = document.getElementById('video-info');
-    if (info) info.textContent = 'Was hast du im Video gesehen? Wähle die richtigen Karten.';
+    if (info) info.textContent = 'Wähle die richtigen Karten.';
+    const q = document.getElementById('video-question');
+    if (q) q.style.display = 'block';
     const grid = document.getElementById('video-card-grid');
     if (!grid) return;
     grid.innerHTML = '';
     videoSelected.clear();
+    const quizStart = document.getElementById('btn-video-quiz-start');
+    if (quizStart) quizStart.disabled = true;
     v.options.forEach((opt, idx) => {
         const lw = opt.toLowerCase();
         const imgPath = `./images/story/${lw}.png`;
@@ -1031,6 +1199,91 @@ function nextVideoStep() {
         showScreen('overview');
     }
 }
+
+function prevVideoStep() {
+    if (videoIndex > 0) {
+        videoIndex--;
+        videoSelected.clear();
+        renderVideoStep();
+    }
+}
+
+function renderForum() {
+    const root = document.getElementById('forum-content');
+    if (!root) return;
+    const topics = [
+        { id: 'start', title: 'Wie starte ich am besten?', body: 'Kurze tägliche Einheiten (5–10 Minuten) funktionieren oft besser als seltene lange. Starte mit 1 Spiel, bleibe in einer Routine und lobe konkrete Fortschritte.' },
+        { id: 'audio', title: 'Audio sinnvoll nutzen', body: 'Nutze Audio als Unterstützung: erst gemeinsam hören, dann nachsprechen. Wenn das Kind müde ist, Audio ausschalten und nur zeigen/benennen lassen.' },
+        { id: 'motivation', title: 'Motivation & Frust vermeiden', body: 'Wenn Frust aufkommt: Aufgabe vereinfachen, Erfolgserlebnisse einbauen, Pausen erlauben. Lieber 3 richtige Antworten feiern als 10 erzwingen.' }
+    ];
+    const openTopic = (id) => {
+        const t = topics.find(x => x.id === id);
+        if (!t) return;
+        root.innerHTML = `
+            <div class="level-card" role="button" tabindex="0">
+                <div class="level-header">
+                    <div class="level-icon">🧑‍🏫</div>
+                    <div class="difficulty-badge difficulty-leicht">Beitrag</div>
+                </div>
+                <h3>${t.title}</h3>
+                <p>${t.body}</p>
+                <div class="action-buttons" style="margin-top:16px;">
+                    <button id="btn-forum-back-list" class="btn btn-secondary">Zur Themenliste</button>
+                </div>
+            </div>
+        `;
+        const b = document.getElementById('btn-forum-back-list');
+        if (b) b.onclick = () => renderForum();
+    };
+    root.innerHTML = '';
+    topics.forEach(t => {
+        const card = document.createElement('div');
+        card.className = 'level-card';
+        card.setAttribute('role', 'button');
+        card.setAttribute('tabindex', '0');
+        card.innerHTML = `
+            <div class="level-header">
+                <div class="level-icon">📌</div>
+                <div class="difficulty-badge difficulty-mittel">Thema</div>
+            </div>
+            <h3>${t.title}</h3>
+            <p>Klicken zum Lesen</p>
+            <button class="btn btn-primary">Lesen</button>
+        `;
+        card.addEventListener('click', () => openTopic(t.id));
+        card.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openTopic(t.id); }
+        });
+        root.appendChild(card);
+    });
+}
+
+function renderVideos() {
+    const root = document.getElementById('videos-content');
+    if (!root) return;
+    const items = [
+        { title: 'Beispiel: Wortschatz-Spiel begleiten', src: './video/video1.mp4', text: 'Erst gemeinsam anschauen, dann die Zielwörter benennen lassen. Kurze Wiederholungen helfen beim Festigen.' },
+        { title: 'Beispiel: Erkenne im Video', src: './video/video2.mp4', text: 'Nach dem Video 1–2 Sekunden warten, dann erst auswählen. Das verbessert Aufmerksamkeit und Erinnerung.' },
+        { title: 'Beispiel: Reim-Memory', src: './video/video3.mp4', text: 'Wörter klar und langsam sprechen lassen. Bei Bedarf Audio nur als Hilfe einsetzen und danach selbst nachsprechen.' }
+    ];
+    root.innerHTML = '';
+    items.forEach(it => {
+        const card = document.createElement('div');
+        card.className = 'level-card';
+        card.innerHTML = `
+            <div class="level-header">
+                <div class="level-icon">🎥</div>
+                <div class="difficulty-badge difficulty-leicht">Video</div>
+            </div>
+            <h3>${it.title}</h3>
+            <div class="word-image-wrap" style="height:260px;">
+                <video style="width:100%;height:100%;object-fit:cover;border-radius:16px;" controls src="${it.src}"></video>
+            </div>
+            <p>${it.text}</p>
+        `;
+        root.appendChild(card);
+    });
+}
 function markWordDone(word) {
     const list = document.getElementById('story-word-list');
     const card = Array.from(list.querySelectorAll('.word-card')).find(el => el.dataset.word === word);
@@ -1062,239 +1315,6 @@ function handleActiveWordResult(transcript) {
         if (srs) srs.textContent = 'Fast! Versuch es nochmal.';
         speechRecognition.start();
     }
-}
-
-let currentStoryText = '';
-
-async function startStory() {
-    document.getElementById('story-text').textContent = 'Die Geschichte wird gerade geschrieben...';
-    try {
-        if (!openAiKey) {
-            currentStoryText = 'Bitte gib deinen OpenAI API Key ein, um die Geschichte zu erzeugen.';
-        } else {
-            currentStoryText = await generateCreativeStoryOpenAI(storySelected);
-        }
-    } catch (e) {
-        currentStoryText = 'Die Geschichte konnte gerade nicht erzeugt werden.';
-    }
-    document.getElementById('story-text').textContent = currentStoryText;
-    readingShown.clear();
-    readingTargets = extractTargetsFromStory(currentStoryText, STORY_WORDS);
-}
-
-function generateStoryFromWords(words) {
-    const lower = words.map(x => x.toLowerCase());
-    const dict = {
-        haus: {def:'das', noun:'Haus'},
-        laus: {def:'die', noun:'Laus'},
-        maus: {def:'die', noun:'Maus'},
-        auto: {def:'das', noun:'Auto'},
-        bauernhof: {def:'der', noun:'Bauernhof'},
-        giraffe: {def:'die', noun:'Giraffe'},
-        spielzeug: {def:'das', noun:'Spielzeug'},
-        seil: {def:'das', noun:'Seil'},
-        loch: {def:'das', noun:'Loch'}
-    };
-    const defPhrase = (key) => {
-        const d = dict[key] || {def:'das', noun:key};
-        const art = d.def.charAt(0).toUpperCase() + d.def.slice(1);
-        return `${art} ${d.noun}`;
-    };
-    const name = currentChild ? currentChild.name : 'Das Kind';
-    const p0 = defPhrase(lower[0]);
-    const p1 = defPhrase(lower[1]);
-    const p2 = defPhrase(lower[2]);
-    const p3 = defPhrase(lower[3]);
-    const intro = `Es ist Zeit für eine kleine Geschichte.`;
-    const extra = `Am Ende gibt es eine große Umarmung und ein fröhliches Lächeln.`;
-    const outro = `Dann sagt die Geschichte Gute Nacht und kichert ein letztes Mal.`;
-    const phrases = [p0, p1, p2, p3];
-    const mid = phrases.join(', ');
-    return `${intro} ${name} entdeckt heute ${mid}. ${extra} ${outro}`;
-}
-
-function randPick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
-function cap(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
-
-function generateProceduralStory(words) {
-    const lower = words.map(x => x.toLowerCase());
-    const dict = {
-        haus: {def:'das', noun:'Haus'}, laus: {def:'die', noun:'Laus'}, maus: {def:'die', noun:'Maus'},
-        auto: {def:'das', noun:'Auto'}, bauernhof: {def:'der', noun:'Bauernhof'}, giraffe: {def:'die', noun:'Giraffe'},
-        spielzeug: {def:'das', noun:'Spielzeug'}, seil: {def:'das', noun:'Seil'}, loch: {def:'das', noun:'Loch'},
-        papa: {def:'der', noun:'Papa'}, mama: {def:'die', noun:'Mama'}, turm: {def:'der', noun:'Turm'},
-        prinzessin: {def:'die', noun:'Prinzessin'}, ritter: {def:'der', noun:'Ritter'}, pferd: {def:'das', noun:'Pferd'},
-        einhorn: {def:'das', noun:'Einhorn'}, drache: {def:'der', noun:'Drache'}
-    };
-    const artNoun = (k) => {
-        const d = dict[k] || {def:'das', noun:k};
-        return `${d.def} ${d.noun}`;
-    };
-    const actions = {
-        haus: ['leuchtet warm', 'steht ganz still', 'knarzt leise'],
-        laus: ['krabbelt flink', 'kichert leise', 'versteckt sich kurz'],
-        maus: ['flitzt schnell', 'kichert frech', 'huscht vorbei'],
-        auto: ['hupt freundlich', 'fährt langsam vorbei', 'blinkt hell'],
-        bauernhof: ['duftet nach Heu', 'ist heute sehr ruhig', 'klingt nach Musik'],
-        giraffe: ['hüpft fröhlich', 'streckt den Hals weit', 'lacht leise'],
-        spielzeug: ['funkelt bunt', 'klappert lustig', 'dreht sich im Kreis'],
-        seil: ['schwingt sanft', 'zittert ein bisschen', 'liegt ganz ruhig'],
-        loch: ['ist tief', 'ist geheimnisvoll', 'wartet still']
-    };
-    const starters = ['Plötzlich', 'Kurz darauf', 'Danach', 'Später', 'Zwischendurch'];
-    const groupLines = [
-        'Dann erzählen alle einen Witz.',
-        'Kurz darauf klatschen alle in die Hände.',
-        'Später zeichnen alle ein Herz in die Luft.',
-        'Am Ende machen alle einen Purzelbaum.'
-    ];
-    const tokenizeAction = (s) => {
-        const parts = s.split(' ');
-        return { verb: parts[0], tail: parts.slice(1).join(' ') };
-    };
-    const sentenceForKey = (k) => {
-        const phrase = artNoun(k);
-        const act = randPick(actions[k] || ['ist fröhlich']);
-        const tok = tokenizeAction(act);
-        const useStarter = Math.random() < 0.5;
-        if (useStarter) {
-            const st = randPick(starters);
-            return `${st} ${tok.verb} ${phrase}${tok.tail ? ' ' + tok.tail : ''}.`;
-        }
-        return `${cap(phrase)} ${tok.verb}${tok.tail ? ' ' + tok.tail : ''}.`;
-    };
-    const name = currentChild ? currentChild.name : 'Das Kind';
-    const intro = `${name} erlebt heute etwas Wunderbares.`;
-    const ensured = lower.map(k => sentenceForKey(k));
-    const dialogTemplates = [
-        (p) => `„Guten Morgen!“ sagt ${p}.`,
-        (p) => `„Komm, wir spielen,“ sagt ${p}.`,
-        (p) => `„Ich helfe dir,“ flüstert ${p}.`,
-        (p) => `„Das ist lustig!“ ruft ${p}.`,
-        (p) => `„Magst du mitkommen?“ fragt ${p}.`
-    ];
-    const extras = [];
-    for (let i = 0; i < 4; i++) {
-        const k = randPick(lower);
-        const p = artNoun(k);
-        extras.push(sentenceForKey(k));
-        extras.push(randPick(dialogTemplates)(p));
-        if (i % 2 === 1) extras.push(randPick(groupLines));
-    }
-    const outro = `Zum Schluss gibt es eine Umarmung und ein Lächeln.`;
-    const all = [intro, ...ensured, ...extras, outro];
-    const seen = new Set();
-    const unique = [];
-    for (const s of all) {
-        const k = s.trim();
-        if (!seen.has(k)) {
-            seen.add(k);
-            unique.push(s);
-        }
-    }
-    let text = unique.join(' ');
-    const wordsCount = text.split(/\s+/).length;
-    if (wordsCount > 230) {
-        text = text.split(/\s+/).slice(0, 220).join(' ') + '.';
-    }
-    return text;
-}
-
-async function generateCreativeStoryOpenAI(words) {
-    const base = words.join(', ');
-    const extra = ['Papa','Mama','Turm','Prinzessin','Ritter','Pferd','Einhorn','Drache'].join(', ');
-    const prompt = `Erstelle eine kindgerechte Geschichte mit der Länge 300–350 Zeichen.
-Baue die Begriffe ein: ${base}. Erweitere um: ${extra}.
-Schreibe im Stil einer Kinderbuchautorin, ohne feste Bausteine, jedes Mal einzigartig.
-Sprachebene passend für 4–6-Jährige, klare, korrekte Sätze.`;
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-            'Authorization': 'Bearer ' + openAiKey,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            model: 'gpt-4o-mini',
-            messages: [
-                {role:'system', content:'Du bist eine erfahrene Kinderbuchautorin. Du schreibst kurze, kindgerechte, einzigartige Geschichten in warmem Ton mit korrekter Grammatik.'},
-                {role:'user', content: prompt}
-            ],
-            temperature: 0.95
-        })
-    });
-    if (!res.ok) throw new Error('OpenAI story generation failed');
-    const data = await res.json();
-    const text = data.choices?.[0]?.message?.content || '';
-    return text.trim();
-}
-
-function playStory() {
-    if (!currentStoryText || !currentStoryText.length) return;
-    readingActive = true;
-    const srs = document.getElementById('story-recognition-status');
-    if (srs) srs.textContent = '🎤 Vorlesen aktiv – sprich die Wörter der Geschichte';
-    const sm = document.getElementById('story-mic');
-    if (sm) sm.classList.add('recording');
-    speechRecognition.setReadingMode(true);
-    speechRecognition.onResult = (transcript) => {
-        handleReadingSpeech(transcript);
-    };
-    speechRecognition.start();
-}
-
-function stopStory() {
-    readingActive = false;
-    speechRecognition.stop();
-    speechRecognition.setReadingMode(false);
-    const sm = document.getElementById('story-mic');
-    if (sm) sm.classList.remove('recording');
-    const srs = document.getElementById('story-recognition-status');
-    if (srs) srs.textContent = 'Vorlesen gestoppt';
-    const seq = document.getElementById('story-sequence');
-    if (seq) seq.innerHTML = '';
-    readingShown.clear();
-    const list = document.getElementById('story-word-list');
-    list.querySelectorAll('.word-card.correct').forEach(el => el.classList.remove('correct'));
-}
-
-function appendSequenceImage(word) {
-    const container = document.getElementById('story-sequence');
-    if (!container) return;
-    const img = document.createElement('img');
-    const path = `./images/story/${word.toLowerCase()}.png`;
-    img.src = path;
-    img.alt = word;
-    img.className = 'fade-in';
-    img.onerror = () => {
-        img.src = generatePlaceholderPng(0, 'leicht');
-    };
-    container.appendChild(img);
-}
-
-function handleReadingSpeech(transcript) {
-    const res = speechRecognition.validateRhyme(transcript, readingTargets.length ? readingTargets : STORY_WORDS);
-    if (res.matchedWord && !readingShown.has(res.matchedWord.toLowerCase())) {
-        readingShown.add(res.matchedWord.toLowerCase());
-        appendSequenceImage(res.matchedWord);
-        highlightStoryWord(res.matchedWord.toLowerCase(), true);
-        if (readingShown.size >= readingTargets.length) {
-            stopStory();
-        }
-    }
-}
-
-function extractTargetsFromStory(text, dictionary) {
-    const lower = text.toLowerCase();
-    const seen = new Set();
-    const ordered = [];
-    dictionary.forEach(w => {
-        const lw = w.toLowerCase();
-        if (lower.includes(lw) && !seen.has(lw)) {
-            seen.add(lw);
-            ordered.push(lw);
-        }
-    });
-    return ordered;
 }
 function renderProfileCard() {
     const container = document.getElementById('profile-card');
@@ -1376,7 +1396,7 @@ function renderLevelsGrid() {
     if (!levels || levels.length === 0) {
         const info = document.createElement('div');
         info.className = 'info-box';
-        info.innerHTML = `<p>Keine Levels verfügbar. Bitte prüfe die Datei <code>./data/levels.json</code>.</p>`;
+        info.innerHTML = `<p>Keine Levels verfügbar. Bitte aktualisiere die Seite.</p>`;
         container.appendChild(info);
         return;
     }
@@ -1484,12 +1504,18 @@ function renderTrainingScreen() {
     });
     
     // Reset UI
-    document.getElementById('btn-record').style.display = speechRecognition.recognition ? 'inline-block' : 'none';
-    document.getElementById('btn-correct').style.display = 'none';
-    document.getElementById('btn-retry').style.display = 'inline-block';
-    document.getElementById('word-image').innerHTML = '';
-    document.getElementById('recognition-status').textContent = speechRecognition.recognition ? 'Drücke auf das Mikrofon zum Starten' : 'Spracherkennung ist optional. Nutze ✓ Richtig oder ✗ Nochmal.';
-    document.querySelector('.mic-circle').classList.remove('recording');
+    const recordBtn = document.getElementById('btn-record');
+    if (recordBtn) recordBtn.style.display = speechRecognition.recognition ? 'inline-block' : 'none';
+    const correctBtn = document.getElementById('btn-correct');
+    if (correctBtn) correctBtn.style.display = 'none';
+    const retryBtn = document.getElementById('btn-retry');
+    if (retryBtn) retryBtn.style.display = 'inline-block';
+    const wordImage = document.getElementById('word-image');
+    if (wordImage) wordImage.innerHTML = '';
+    const status = document.getElementById('recognition-status');
+    if (status) status.textContent = speechRecognition.recognition ? 'Drücke auf das Mikrofon zum Starten' : 'Spracherkennung ist optional. Nutze ✓ Richtig oder ✗ Nochmal.';
+    const micCircleEl = document.querySelector('.mic-circle');
+    if (micCircleEl) micCircleEl.classList.remove('recording');
     const micro = document.querySelector('#training-screen .microphone-section');
     const actions = document.querySelector('#training-screen .action-buttons');
     if (micro && actions && micro.parentElement !== actions) {
@@ -1617,7 +1643,8 @@ function handleTrainingContinuousResult(transcript) {
 
 // Speech Error Handler
 function handleSpeechError(error) {
-    document.querySelector('.mic-circle').classList.remove('recording');
+    const mic = document.querySelector('.mic-circle');
+    if (mic) mic.classList.remove('recording');
     
     let message = 'Fehler bei der Aufnahme.';
     
@@ -1633,7 +1660,8 @@ function handleSpeechError(error) {
             break;
     }
     
-    document.getElementById('recognition-status').textContent = message;
+    const statusEl = document.getElementById('recognition-status');
+    if (statusEl) statusEl.textContent = message;
 }
 
 // Zeige Bild zum Wort
