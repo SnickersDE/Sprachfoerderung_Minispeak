@@ -9,6 +9,10 @@ let currentSublevelData = null;
 let audioEnabled = true;
 let currentScreenName = 'landing';
 let navMode = 'kids';
+let landingTitleVideoStartTimeout = null;
+let landingTitleVideoStopper = null;
+let disableLandingLogoTransitionOnce = false;
+let profileEditUnlocked = false;
 
 // Pädagogisches Gesamtmodell (entwicklungsorientiert, nicht spiel-basiert)
 // Dimensionen: A Hörwahrnehmung, B phonologische Bewusstheit, C Wortschatz, D Semantik, E Grammatik, F Erzählen, G Sprachgedächtnis
@@ -383,10 +387,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     setupImagePlaceholders();
     applyGlobalModeClasses();
+    enableMobileBackgroundIfPhone();
     
     // Zeige Landing initial
     showScreen('landing');
     renderChildrenList();
+    scheduleLandingTitleVideo();
     
     // Setup Event Listeners
     setupEventListeners();
@@ -394,6 +400,163 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     console.log('✅ App bereit!');
 });
+
+function stopLandingTitleVideo() {
+    if (landingTitleVideoStartTimeout != null) {
+        clearTimeout(landingTitleVideoStartTimeout);
+        landingTitleVideoStartTimeout = null;
+    }
+    if (typeof landingTitleVideoStopper === 'function') {
+        try { landingTitleVideoStopper(); } catch {}
+        landingTitleVideoStopper = null;
+    }
+}
+
+function scheduleLandingTitleVideo() {
+    stopLandingTitleVideo();
+    landingTitleVideoStartTimeout = setTimeout(() => {
+        landingTitleVideoStartTimeout = null;
+        landingTitleVideoStopper = playLandingTitleVideo({ plays: 2 });
+    }, 200);
+}
+
+function playLandingTitleVideo({ plays = 2 } = {}) {
+    const img = document.getElementById('landing-title-img');
+    const video = document.getElementById('landing-title-video');
+    if (!img || !video) return null;
+    if (currentScreenName !== 'landing') return null;
+    const wrap = img.closest('.landing-title-wrap');
+    let stopped = false;
+    let bumpTimeout = null;
+    let bumpCleanupTimeout = null;
+    const srcCandidates = ['./title.mp4', './video/title.mp4', './images/title.mp4'];
+    let srcIndex = 0;
+    const tryNextSrc = () => {
+        const src = srcCandidates[srcIndex++];
+        if (!src) return false;
+        try {
+            video.src = src;
+            video.load();
+        } catch {}
+        return true;
+    };
+    const stop = () => {
+        if (stopped) return;
+        stopped = true;
+        if (bumpTimeout != null) {
+            clearTimeout(bumpTimeout);
+            bumpTimeout = null;
+        }
+        if (bumpCleanupTimeout != null) {
+            clearTimeout(bumpCleanupTimeout);
+            bumpCleanupTimeout = null;
+        }
+        if (wrap) wrap.classList.remove('landing-title-end-bump');
+        try { video.pause(); } catch {}
+        try { video.removeEventListener('ended', onEnded); } catch {}
+        try { video.removeEventListener('error', onError); } catch {}
+        try { video.removeEventListener('loadedmetadata', onMeta); } catch {}
+        try { video.removeEventListener('loadeddata', onLoaded); } catch {}
+        video.style.opacity = '0';
+        img.style.opacity = '';
+    };
+    const onError = () => {
+        if (tryNextSrc()) return;
+        stop();
+    };
+    const triggerEndBump = () => {
+        if (stopped) return;
+        if (!wrap) return;
+        wrap.classList.remove('landing-title-end-bump');
+        void wrap.offsetWidth;
+        wrap.classList.add('landing-title-end-bump');
+        if (bumpCleanupTimeout != null) clearTimeout(bumpCleanupTimeout);
+        bumpCleanupTimeout = setTimeout(() => {
+            bumpCleanupTimeout = null;
+            if (wrap) wrap.classList.remove('landing-title-end-bump');
+        }, 160);
+    };
+    let currentPlay = 1;
+    const scheduleEndBumpForCurrentPlay = () => {
+        if (bumpTimeout != null) {
+            clearTimeout(bumpTimeout);
+            bumpTimeout = null;
+        }
+        if (currentPlay !== Math.max(1, plays)) return;
+        const dur = Number(video.duration);
+        if (!Number.isFinite(dur) || dur <= 0) return;
+        const ms = Math.max(0, Math.round((dur - 0.11) * 1000));
+        bumpTimeout = setTimeout(() => {
+            bumpTimeout = null;
+            triggerEndBump();
+        }, ms);
+    };
+    const onMeta = () => scheduleEndBumpForCurrentPlay();
+    const onLoaded = () => startPlayback();
+    let started = false;
+    let played = 0;
+    const onEnded = () => {
+        if (stopped) return;
+        played += 1;
+        if (played >= Math.max(1, plays)) {
+            stop();
+            return;
+        }
+        try {
+            currentPlay = played + 1;
+            video.currentTime = 0;
+            const p = video.play();
+            if (p && typeof p.catch === 'function') p.catch(() => {});
+            scheduleEndBumpForCurrentPlay();
+        } catch {
+            stop();
+        }
+    };
+    const startPlayback = () => {
+        if (stopped || started) return;
+        started = true;
+        img.style.opacity = '0';
+        video.style.opacity = '1';
+        video.muted = true;
+        video.loop = false;
+        video.autoplay = false;
+        video.controls = false;
+        video.playsInline = true;
+        video.disablePictureInPicture = true;
+        try {
+            currentPlay = 1;
+            video.currentTime = 0;
+            const p = video.play();
+            if (p && typeof p.catch === 'function') p.catch(() => {});
+            scheduleEndBumpForCurrentPlay();
+        } catch {
+            stop();
+        }
+    };
+    video.addEventListener('ended', onEnded);
+    video.addEventListener('error', onError);
+    video.addEventListener('loadedmetadata', onMeta);
+    video.addEventListener('loadeddata', onLoaded, { once: true });
+    if (!tryNextSrc()) return null;
+    try {
+        if (video.readyState >= 2) startPlayback();
+    } catch {}
+    return stop;
+}
+
+function enableMobileBackgroundIfPhone() {
+    const isPhone = !!(window.matchMedia && window.matchMedia('(max-width: 600px)').matches);
+    if (!isPhone) return;
+    const src = './images/landing-placeholder-mobile.png';
+    try {
+        const probe = new Image();
+        probe.onload = () => {
+            document.body.dataset.bg = 'mobile';
+        };
+        probe.onerror = () => {};
+        probe.src = src;
+    } catch {}
+}
 
 function svgPlaceholderDataUrl(label, variant) {
     const safeLabel = String(label || '').slice(0, 30);
@@ -568,6 +731,8 @@ function setupEventListeners() {
     const landingContinue = document.getElementById('btn-landing-continue');
     if (landingContinue) {
         landingContinue.addEventListener('click', async () => {
+            disableLandingLogoTransitionOnce = true;
+            stopLandingTitleVideo();
             const isMobile = window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
             if (isMobile) {
                 const img = document.getElementById('landing-title-img');
@@ -863,8 +1028,14 @@ function handleNavBack() {
 // Screen Navigation
 function showScreen(screenName) {
     const prev = currentScreenName;
+    const skipLandingLogoTransition = disableLandingLogoTransitionOnce;
+    disableLandingLogoTransitionOnce = false;
     let logoTransition = null;
     if (prev === 'landing' && screenName !== 'landing') {
+        stopLandingTitleVideo();
+        if (skipLandingLogoTransition) {
+            logoTransition = null;
+        } else {
         const landingImg = document.getElementById('landing-title-img');
         const navImg = document.getElementById('nav-title-img');
         if (landingImg && navImg) {
@@ -940,6 +1111,7 @@ function showScreen(screenName) {
                 navImg.style.opacity = '0';
                 logoTransition = { movingEl, startRect, navImg, prevNavOpacity, prevNavTransition };
             }
+        }
         }
     }
     if (prev === 'videostory' && screenName !== 'videostory') {
@@ -1059,6 +1231,7 @@ function renderChildrenList() {
 function selectChild(childId) {
     currentChild = dataManager.setCurrentChild(childId);
     ensureSupportProfileLoaded();
+    profileEditUnlocked = false;
     document.getElementById('child-avatar').textContent = currentChild.avatar;
     document.getElementById('child-name').textContent = `${currentChild.name}s Fortschritt`;
     
@@ -1593,17 +1766,12 @@ function renderSoundCategories() {
     Object.keys(SOUND_CATEGORIES).forEach(key => {
         const cat = SOUND_CATEGORIES[key];
         const card = document.createElement('div');
-        card.className = 'level-card';
+        card.className = 'level-card sound-category-card';
         card.innerHTML = `
-            <div class="level-header">
-                <div class="level-icon">🔊</div>
-                <div class="difficulty-badge difficulty-leicht">Spiel</div>
+            <div class="word-image-wrap sound-category-bg" style="background-image:url('./images/sounds/categories/${key}.png');">
+                <div class="progress-bar"><div class="progress-fill" style="width:${getSoundCategoryPercent(key)}%"></div></div>
+                <div class="sound-category-label">${cat.label}</div>
             </div>
-            <h3>${cat.label}</h3>
-            <div class="word-image-wrap" style="height:160px;">
-                <img src="./images/sounds/categories/${key}.png" alt="${cat.label}">
-            </div>
-            <div class="progress-bar"><div class="progress-fill" style="width:${getSoundCategoryPercent(key)}%"></div></div>
             <button class="btn btn-primary">Öffnen</button>
         `;
         card.addEventListener('click', () => openSoundCategory(key));
@@ -1964,9 +2132,9 @@ const VIDEOSTORY_LIBRARY = {
         title: 'Videostory',
         startSceneId: 'scene1',
         scenes: [
-            { id: 'scene1', videoSrc: './video/videostory/Video1.mp4', nextSceneId: 'scene2' },
-            { id: 'scene2', videoSrc: './video/videostory/Video2.mp4', nextSceneId: 'scene3' },
-            { id: 'scene3', videoSrc: './video/videostory/Video3.mp4', nextSceneId: null }
+            { id: 'scene1', videoSrc: './video/videostory/video1.mp4', nextSceneId: 'scene2' },
+            { id: 'scene2', videoSrc: './video/videostory/video2.mp4', nextSceneId: 'scene3' },
+            { id: 'scene3', videoSrc: './video/videostory/video3.mp4', nextSceneId: null }
         ]
     }
 };
@@ -2000,6 +2168,7 @@ function createVideoStoryRuntime() {
         videoA: document.getElementById('videostory-video-a'),
         videoB: document.getElementById('videostory-video-b'),
         nextBtn: document.getElementById('btn-videostory-next'),
+        sceneSelect: document.getElementById('videostory-scene-select'),
         dim: document.getElementById('videostory-dim'),
         loading: document.getElementById('videostory-loading'),
         loadingFill: document.getElementById('videostory-loading-fill'),
@@ -2124,7 +2293,8 @@ function createVideoStoryRuntime() {
     };
 
     const updateNextBtn = (scene) => {
-        const { nextBtn } = els();
+        const { nextBtn, sceneSelect } = els();
+        if (sceneSelect) sceneSelect.value = scene?.id || '';
         if (!nextBtn) return;
         nextBtn.disabled = false;
         nextBtn.textContent = scene?.nextSceneId ? 'Weiter' : 'Fertig';
@@ -2181,8 +2351,22 @@ function createVideoStoryRuntime() {
         state.transitioning = false;
         state.activeSlot = 'a';
         showScreen('videostory');
-        const { nextBtn, videoA, videoB } = els();
+        const { nextBtn, videoA, videoB, sceneSelect } = els();
         if (nextBtn) { nextBtn.disabled = true; nextBtn.textContent = 'Weiter'; }
+        if (sceneSelect) {
+            const scenes = Array.isArray(story?.scenes) ? story.scenes : [];
+            sceneSelect.innerHTML = scenes
+                .map((s, i) => `<option value="${s.id}">${s.title || s.label || `Szene ${i + 1}`}</option>`)
+                .join('');
+            sceneSelect.onchange = async () => {
+                const picked = sceneSelect.value;
+                if (!picked || picked === state.currentSceneId || state.transitioning) return;
+                state.transitioning = true;
+                if (nextBtn) nextBtn.disabled = true;
+                await showScene(picked, { initial: false });
+                state.transitioning = false;
+            };
+        }
         [videoA, videoB].forEach(v => { if (v) v.removeAttribute('src'); });
         await preloadStory(story);
         const startId = story.startSceneId || (story.scenes && story.scenes[0] ? story.scenes[0].id : '');
@@ -2207,7 +2391,7 @@ function createVideoStoryRuntime() {
     };
 
     const close = () => {
-        const { stage, videoA, videoB, nextBtn } = els();
+        const { stage, videoA, videoB, nextBtn, sceneSelect } = els();
         if (stage) stage.classList.remove('is-transitioning');
         [videoA, videoB].forEach(v => {
             if (!v) return;
@@ -2215,6 +2399,10 @@ function createVideoStoryRuntime() {
             try { v.pause(); } catch {}
             try { v.removeAttribute('src'); v.load(); } catch {}
         });
+        if (sceneSelect) {
+            sceneSelect.onchange = null;
+            sceneSelect.innerHTML = '';
+        }
         if (nextBtn) nextBtn.disabled = false;
         setLoading(false);
         updateLoading(0);
@@ -3542,7 +3730,11 @@ function renderProfileCard() {
     const container = document.getElementById('profile-card');
     if (!container || !currentChild) return;
     const group = currentChild.group || '–';
+    container.classList.toggle('edit-locked', !profileEditUnlocked);
     container.innerHTML = `
+        <div class="action-buttons" style="margin:0 0 12px 0;">
+            <button id="btn-profile-edit-toggle" class="btn btn-secondary">${profileEditUnlocked ? 'Bearbeiten beenden' : 'Details bearbeiten'}</button>
+        </div>
         <div class="profile-row">
             <span class="label">Name</span>
             <span class="value" id="pc-name">${currentChild.name}</span>
@@ -3559,6 +3751,13 @@ function renderProfileCard() {
             <button class="icon-btn" id="edit-group" aria-label="Gruppe bearbeiten">✎</button>
         </div>
     `;
+    const toggle = document.getElementById('btn-profile-edit-toggle');
+    if (toggle) {
+        toggle.onclick = () => {
+            profileEditUnlocked = !profileEditUnlocked;
+            renderProfileCard();
+        };
+    }
     const editName = document.getElementById('edit-name');
     const editAge = document.getElementById('edit-age');
     const editGroup = document.getElementById('edit-group');
