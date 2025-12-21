@@ -38,7 +38,8 @@ const STORAGE_KEYS = {
 
 const DEFAULT_SETTINGS = {
     focusMode: true,
-    observationMode: false
+    observationMode: false,
+    theme: 'light'
 };
 
 let appSettings = loadSettings();
@@ -117,6 +118,7 @@ function saveSettings(next) {
 function applyGlobalModeClasses() {
     document.body.classList.toggle('observation-mode', !!appSettings.observationMode);
     document.body.classList.toggle('focus-mode', !!appSettings.focusMode);
+    document.body.dataset.theme = appSettings.theme === 'dark' ? 'dark' : 'light';
 }
 
 function ensureSupportProfileLoaded() {
@@ -453,6 +455,16 @@ function setupEventListeners() {
         updateNavAudioIcon();
     }
     
+    const navTheme = document.getElementById('btn-nav-theme');
+    if (navTheme) {
+        navTheme.addEventListener('click', () => {
+            const nextTheme = appSettings.theme === 'dark' ? 'light' : 'dark';
+            saveSettings({ theme: nextTheme });
+            updateNavThemeIcon();
+        });
+        updateNavThemeIcon();
+    }
+  
     const resetBtn = document.getElementById('btn-reset-progress');
     if (resetBtn) {
         resetBtn.addEventListener('click', () => {
@@ -752,7 +764,16 @@ function setupEventListeners() {
                 nextBtn.style.display = 'none';
             }
         });
-    }
+   }
+}
+
+function updateNavThemeIcon() {
+    const btn = document.getElementById('btn-nav-theme');
+    if (!btn) return;
+    const dark = appSettings.theme === 'dark';
+    btn.textContent = dark ? '☀️' : '🌙';
+    btn.setAttribute('aria-label', dark ? 'Light-Mode aktivieren' : 'Dark-Mode aktivieren');
+
 }
 
 function setNavMode(mode) {
@@ -3395,3 +3416,4 @@ function setupLandingDice() {
     window.addEventListener('touchmove', onMove, { passive: false });
     window.addEventListener('touchend', onUp);
 }
+
