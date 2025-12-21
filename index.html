@@ -8,16 +8,17 @@
     <link rel="stylesheet" href="./css/styles.css">
 </head>
 <body>
-    <div id="app-titlebar">
+    <div id="app-titlebar" style="display:none;">
         <img id="nav-title-img" class="title-image nav-title-image" src="./images/title.png" alt="Deine Sprachwerkstatt" data-fallback="Deine Sprachwerkstatt">
     </div>
-    <div id="app-nav" style="max-width:1200px;margin:0 auto 15px auto;background:#fff;border-radius:20px;padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,0.15);display:flex;justify-content:space-between;align-items:center;gap:10px;">
+    <div id="app-nav" style="max-width:1200px;margin:0 auto 15px auto;background:#fff;border-radius:20px;padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,0.15);display:none;justify-content:space-between;align-items:center;gap:10px;">
         <div class="nav-left" style="display:flex;gap:10px;align-items:center;">
             <button id="btn-nav-back" class="btn btn-error" title="Zurück">⬅ Zurück</button>
         </div>
         <div class="nav-center" style="display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;">
             <button id="btn-nav-kinder" class="btn btn-secondary">Kinder</button>
             <button id="btn-nav-uebersicht" class="btn btn-primary">Spielübersicht</button>
+            <button id="btn-nav-forum" class="btn btn-secondary">Forum</button>
         </div>
         <div class="nav-right" style="display:flex;gap:10px;align-items:center;">
             <button id="btn-nav-audio" class="btn btn-secondary" title="Audio">🔊</button>
@@ -45,8 +46,8 @@
                 </div>
             </div>
             <div class="action-buttons">
-                <button id="btn-landing-continue" class="btn btn-success">starten</button>
-                <button id="btn-landing-experts" class="btn btn-warning">Für Fachkräfte und Eltern</button>
+                <button id="btn-landing-continue" class="btn btn-success">Lass uns loslegen</button>
+                <button id="btn-landing-experts" class="btn btn-warning">Educator View</button>
             </div>
         </div>
     </div>
@@ -54,6 +55,21 @@
     <div id="login-screen" class="screen">
         <div class="container">
             <div id="children-list" class="children-grid"></div>
+            <div class="info-box" style="margin-top:14px;">
+                <p style="margin:0 0 10px 0;"><strong>Neues Kind hinzufügen</strong></p>
+                <div class="action-buttons" style="margin:0;align-items:center;">
+                    <input id="add-child-name" class="profile-input" placeholder="Name" style="max-width:240px;">
+                    <input id="add-child-age" class="profile-input" placeholder="Alter" inputmode="numeric" style="max-width:120px;">
+                    <select id="add-child-avatar" class="voice-select" style="margin-right:0;">
+                        <option value="👧">👧</option>
+                        <option value="👦">👦</option>
+                        <option value="🧒">🧒</option>
+                        <option value="👶">👶</option>
+                        <option value="👤">👤</option>
+                    </select>
+                    <button id="btn-add-child" class="btn btn-success">Hinzufügen</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -74,6 +90,7 @@
             </div>
             <div class="breadcrumb">Start → Übersicht</div>
             <div id="profile-card" class="profile-card"></div>
+            <div id="game-icons-grid" class="app-icon-grid">
             <div id="story-card" class="level-card" role="button" tabindex="0" aria-label="Wortschatz-Spiel öffnen">
                 <div class="level-header">
                     <div class="level-icon">📖</div>
@@ -128,6 +145,43 @@
                 <p>Sieh dir ein kurzes Video an und wähle, was du gesehen hast.</p>
                 <button id="btn-video-start" class="btn btn-primary">Start</button>
             </div>
+            <div id="lang-memory-card" class="level-card" role="button" tabindex="0" aria-label="Sprachgedächtnis öffnen">
+                <div class="level-header">
+                    <div class="level-icon">🧩</div>
+                    <div class="difficulty-badge difficulty-leicht">Spiel</div>
+                </div>
+                <h3>Sprachgedächtnis</h3>
+                <p>Höre drei Wörter, merke sie dir und finde das fehlende Wort.</p>
+                <button id="btn-lang-memory-start" class="btn btn-primary">Start</button>
+            </div>
+            <div id="sentence-card" class="level-card" role="button" tabindex="0" aria-label="Satz ergänzen öffnen">
+                <div class="level-header">
+                    <div class="level-icon">🧠</div>
+                    <div class="difficulty-badge difficulty-mittel">Spiel</div>
+                </div>
+                <h3>Satz ergänzen</h3>
+                <p>Höre einen Satzanfang und wähle die passende Fortsetzung.</p>
+                <button id="btn-sentence-start" class="btn btn-primary">Start</button>
+            </div>
+            <div id="semantic-card" class="level-card" role="button" tabindex="0" aria-label="Was passt dazu öffnen">
+                <div class="level-header">
+                    <div class="level-icon">🧠</div>
+                    <div class="difficulty-badge difficulty-leicht">Spiel</div>
+                </div>
+                <h3>Was passt dazu?</h3>
+                <p>Wähle, was im Alltag zusammenpasst – ohne Kategorien.</p>
+                <button id="btn-semantic-start" class="btn btn-primary">Start</button>
+            </div>
+            <div id="listen-card" class="level-card" role="button" tabindex="0" aria-label="Hör genau hin öffnen">
+                <div class="level-header">
+                    <div class="level-icon">👂</div>
+                    <div class="difficulty-badge difficulty-leicht">Spiel</div>
+                </div>
+                <h3>Hör genau hin!</h3>
+                <p>Höre zwei Wörter: klingen sie gleich oder anders?</p>
+                <button id="btn-listen-start" class="btn btn-primary">Start</button>
+            </div>
+            </div>
             <div id="levels-grid" class="levels-grid"></div>
         </div>
     </div>
@@ -140,15 +194,16 @@
                 </div>
             </div>
             <div class="breadcrumb">Start → Übersicht → Wortschatz</div>
-            <p id="story-info" class="screen-description">Wähle ein Bild oder starte das kleine Quiz</p>
-            <div id="story-word-list" class="word-list"></div>
+            <div id="story-quiz-progress-wrap" class="progress-bar" style="display:none;"><div id="story-quiz-progress" class="progress-fill"></div></div>
+            <p id="story-info" class="screen-description">Höre das Wort und tippe das passende Bild.</p>
+            <div class="info-box" style="margin-top:10px;"><p id="story-recognition-status">Tippe auf „Spiel beginnen“ und starte.</p></div>
             <div class="action-buttons">
                 <button id="btn-story-quiz-back" class="btn btn-error" title="Neu würfeln" style="display:none;">🎲 Neu würfeln</button>
-                <button id="btn-story-quiz-start" class="btn btn-success">Weiter</button>
-                <button id="btn-story-quiz-mic" class="btn btn-success" title="Frage vorlesen" style="display:none;">zeig mir?</button>
+                <button id="btn-story-quiz-start" class="btn btn-success">Spiel beginnen</button>
+                <button id="btn-story-quiz-mic" class="btn btn-secondary" title="Wort wiederholen" style="display:none;">Frage wiederholen</button>
                 <button id="btn-next-level" class="btn btn-primary" style="display:none;">Weiter</button>
             </div>
-            <div id="story-quiz-progress-wrap" class="progress-bar" style="display:none;"><div id="story-quiz-progress" class="progress-fill"></div></div>
+            <div id="story-word-list" class="word-list"></div>
         </div>
     </div>
     <div id="video-screen" class="screen">
@@ -166,7 +221,7 @@
             </div>
             <div class="action-buttons">
                 <button id="btn-video-prev" class="btn btn-error" title="Video zurück">⬅</button>
-                <button id="btn-video-quiz-start" class="btn btn-success">Beginnen</button>
+                <button id="btn-video-quiz-start" class="btn btn-success">Spiel beginnen</button>
                 <button id="btn-video-next" class="btn btn-primary">nächstes Video</button>
             </div>
             <div id="video-question" class="center-question" style="display:none;">Was hast du im Video gesehen?</div>
@@ -197,6 +252,7 @@
                     <option value="10">Im Wald</option>
                 </select>
                 <button id="btn-memory-reset" class="btn btn-secondary">🔄 Neue Runde</button>
+                <button id="btn-memory-next-level" class="btn btn-success">nächstes Level</button>
             </div>
             <div class="progress-bar"><div id="memory-progress-fill" class="progress-fill"></div></div>
             <div id="memory-status" class="info-box"><p>Gefundene Reime: 0/0</p></div>
@@ -229,6 +285,116 @@
                 <button id="btn-sound-play" class="btn btn-success">🟢 Geräusch abspielen</button>
             </div>
             <div id="sound-detail-grid" class="word-list"></div>
+        </div>
+    </div>
+    <div id="lang-memory-screen" class="screen">
+        <div class="container">
+            <div class="header">
+                <div>
+                    <h2>Sprachgedächtnis</h2>
+                </div>
+            </div>
+            <div class="breadcrumb">Start → Übersicht → Sprachgedächtnis</div>
+            <div id="lang-memory-progress-wrap" class="progress-bar" style="margin-bottom:14px;">
+                <div id="lang-memory-progress-fill" class="progress-fill"></div>
+            </div>
+            <div class="lang-memory-info-row">
+                <p id="lang-memory-info" class="screen-description"></p>
+                <div class="lang-memory-inline-buttons">
+                    <button id="btn-lang-memory-replay" class="btn btn-success" title="Nochmal hören">🔊</button>
+                    <button id="btn-lang-memory-ready" class="btn btn-success lang-memory-ready" title="Bereit">👍</button>
+                </div>
+            </div>
+            <div id="lang-memory-stage" class="info-box" style="margin-top:10px;"></div>
+            <div id="lang-memory-present" class="word-list"></div>
+            <div id="lang-memory-options" class="word-list"></div>
+            <div class="action-buttons">
+                <button id="btn-end-lang-memory" class="btn btn-error">Beenden</button>
+            </div>
+        </div>
+    </div>
+    <div id="sentence-screen" class="screen">
+        <div class="container">
+            <div class="header">
+                <div>
+                    <h2>Satz ergänzen</h2>
+                </div>
+            </div>
+            <div class="breadcrumb">Start → Übersicht → Satz ergänzen</div>
+            <div id="sentence-progress-wrap" class="progress-bar" style="margin-bottom:14px;">
+                <div id="sentence-progress-fill" class="progress-fill"></div>
+            </div>
+            <p id="sentence-info" class="screen-description"></p>
+            <div id="sentence-stage" class="info-box" style="margin-top:10px;"></div>
+            <div id="sentence-options" class="word-list"></div>
+            <div class="action-buttons">
+                <button id="btn-sentence-replay" class="btn btn-secondary" title="Nochmal hören">🔊</button>
+                <button id="btn-sentence-thumbs-up" class="btn btn-success" disabled>Daumen hoch</button>
+                <button id="btn-sentence-next" class="btn btn-success" style="display:none;">Weiter</button>
+                <button id="btn-end-sentence" class="btn btn-error">Beenden</button>
+            </div>
+        </div>
+    </div>
+    <div id="semantic-screen" class="screen">
+        <div class="container">
+            <div class="header">
+                <div>
+                    <h2>Was passt dazu?</h2>
+                </div>
+            </div>
+            <div class="breadcrumb">Start → Übersicht → Was passt dazu?</div>
+            <div id="semantic-progress-wrap" class="progress-bar" style="margin-bottom:14px;">
+                <div id="semantic-progress-fill" class="progress-fill"></div>
+            </div>
+            <p id="semantic-info" class="screen-description"></p>
+            <div id="semantic-stage" class="info-box" style="margin-top:10px;"></div>
+            <div id="semantic-center" class="word-list"></div>
+            <div id="semantic-options" class="word-list"></div>
+            <div class="action-buttons">
+                <button id="btn-semantic-replay" class="btn btn-secondary" title="Nochmal hören">🔊</button>
+                <button id="btn-semantic-expand" class="btn btn-success" style="display:none;">Mehr</button>
+                <button id="btn-end-semantic" class="btn btn-error">Beenden</button>
+            </div>
+        </div>
+    </div>
+    <div id="listen-screen" class="screen">
+        <div class="container">
+            <div class="header">
+                <div>
+                    <h2>Hör genau hin!</h2>
+                </div>
+            </div>
+            <div class="breadcrumb">Start → Übersicht → Hör genau hin!</div>
+            <div id="listen-progress-wrap" class="progress-bar" style="margin-bottom:14px;">
+                <div id="listen-progress-fill" class="progress-fill"></div>
+            </div>
+            <p id="listen-info" class="screen-description"></p>
+            <div id="listen-stage" class="info-box" style="margin-top:10px;"></div>
+            <div class="action-buttons" style="justify-content:center;margin:12px 0;">
+                <button id="btn-listen-replay" class="btn btn-secondary">Frage wiederholen</button>
+            </div>
+            <div class="symbol-buttons">
+                <button id="btn-listen-same" class="symbol-btn same" aria-label="gleich">＝</button>
+                <button id="btn-listen-diff" class="symbol-btn diff" aria-label="anders">≠</button>
+            </div>
+            <div class="action-buttons">
+                <button id="btn-end-listen" class="btn btn-error">Beenden</button>
+            </div>
+        </div>
+    </div>
+    <div id="metadata-screen" class="screen">
+        <div class="container">
+            <div class="header">
+                <div>
+                    <h2>Metadaten der Kinder</h2>
+                </div>
+            </div>
+            <div class="breadcrumb">Start → Für Fachkräfte und Eltern → Metadaten der Kinder</div>
+            <p class="screen-description">Übersicht für Fachkräfte: Profil, Entwicklungsstand, Spiel-Metadaten und Beobachtungswerte.</p>
+            <div id="metadata-content"></div>
+            <div class="action-buttons">
+                <button id="btn-end-metadata" class="btn btn-secondary">Zurück</button>
+            </div>
         </div>
     </div>
     <div id="forum-screen" class="screen">
@@ -285,7 +451,7 @@
                 </div>
 
             <div class="action-buttons">
-                    <button id="btn-record" class="btn btn-primary btn-record">🎤 Starten</button>
+                    <button id="btn-record" class="btn btn-primary btn-record" title="Aufnahme starten">🎤</button>
                     <button id="btn-correct" class="btn btn-success" style="display:none;">
                         ✓ Richtig
                     </button>
