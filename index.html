@@ -21,8 +21,8 @@
             <button id="btn-nav-forum" class="btn btn-secondary">Forum</button>
         </div>
         <div class="nav-right" style="display:flex;gap:10px;align-items:center;">
-            <button id="btn-nav-audio" class="btn btn-secondary" title="Audio">🔊</button>
             <button id="btn-nav-theme" class="btn btn-secondary" title="Darstellung">🌙</button>
+            <button id="btn-nav-audio" class="btn btn-secondary" title="Audio">🔊</button>
         </div>
     </div>
     <!-- Landing Screen -->
@@ -97,27 +97,18 @@
                     <div class="level-icon">📖</div>
                     <div class="difficulty-badge difficulty-leicht">Spiel</div>
                 </div>
-                <h3>Wortschatz Spiel (einsilbig)</h3>
-                <p>Erweitere den Wortschatz deines Kindes und lernt gemeinsam neue Wörter kennen.</p>
+                <h3>Wortschatz Spiel</h3>
+                <p>Höre ein Wort und tippe das passende Bild.</p>
                 <button id="btn-story-start" class="btn btn-primary">Start</button>
             </div>
-            <div id="vocab2-card" class="level-card" role="button" tabindex="0" aria-label="Wortschatz-Spiel zweisilbig öffnen">
+            <div id="books-card" class="level-card" role="button" tabindex="0" aria-label="Buch lesen öffnen">
                 <div class="level-header">
-                    <div class="level-icon">📘</div>
-                    <div class="difficulty-badge difficulty-mittel">Spiel</div>
+                    <div class="level-icon">📚</div>
+                    <div class="difficulty-badge difficulty-leicht">Spiel</div>
                 </div>
-                <h3>Wortschatz Spiel (zweisilbig)</h3>
-                <p>Erweitere den Wortschatz deines Kindes und lernt gemeinsam neue Wörter kennen.</p>
-                <button id="btn-vocab2-start" class="btn btn-primary">Start</button>
-            </div>
-            <div id="vocab3-card" class="level-card" role="button" tabindex="0" aria-label="Wortschatz-Spiel dreisilbig öffnen">
-                <div class="level-header">
-                    <div class="level-icon">📗</div>
-                    <div class="difficulty-badge difficulty-schwer">Spiel</div>
-                </div>
-                <h3>Wortschatz Spiel (dreisilbig)</h3>
-                <p>Erweitere den Wortschatz deines Kindes und lernt gemeinsam neue Wörter kennen.</p>
-                <button id="btn-vocab3-start" class="btn btn-primary">Start</button>
+                <h3>Buch lesen</h3>
+                <p>Wähle ein Buch und lies es gemeinsam im PDF-Reader.</p>
+                <button id="btn-books-start" class="btn btn-primary">Start</button>
             </div>
             <div id="memory1-card" class="level-card" role="button" tabindex="0" aria-label="Memory der Töne öffnen">
                 <div class="level-header">
@@ -145,6 +136,15 @@
                 <h3>Erkenne im Video</h3>
                 <p>Sieh dir ein kurzes Video an und wähle, was du gesehen hast.</p>
                 <button id="btn-video-start" class="btn btn-primary">Start</button>
+            </div>
+            <div id="videostory-card" class="level-card" role="button" tabindex="0" aria-label="Videostory öffnen">
+                <div class="level-header">
+                    <div class="level-icon">🔥</div>
+                    <div class="difficulty-badge difficulty-leicht">Spiel</div>
+                </div>
+                <h3>Videostory</h3>
+                <p>Schau eine kleine Geschichte und klicke dich Szene für Szene weiter.</p>
+                <button id="btn-videostory-start" class="btn btn-primary">Start</button>
             </div>
             <div id="lang-memory-card" class="level-card" role="button" tabindex="0" aria-label="Sprachgedächtnis öffnen">
                 <div class="level-header">
@@ -227,6 +227,32 @@
             </div>
             <div id="video-question" class="center-question" style="display:none;">Was hast du im Video gesehen?</div>
             <div id="video-card-grid" class="word-list"></div>
+        </div>
+    </div>
+    <div id="videostory-screen" class="screen">
+        <div class="container">
+            <div class="header">
+                <div>
+                    <h2>Videostory</h2>
+                </div>
+            </div>
+            <div class="breadcrumb">Start → Übersicht → Videostory</div>
+            <div id="videostory-stage" class="videostory-stage" aria-label="Videostory Bühne">
+                <video id="videostory-video-a" class="videostory-video" autoplay loop muted playsinline preload="auto"></video>
+                <video id="videostory-video-b" class="videostory-video" autoplay loop muted playsinline preload="auto"></video>
+                <div id="videostory-dim" class="videostory-dim"></div>
+                <button id="btn-videostory-next" class="videostory-next-btn">Weiter</button>
+                <div id="videostory-loading" class="videostory-loading" aria-label="Videos werden vorgeladen" style="display:none;">
+                    <div class="videostory-loading-card">
+                        <div class="videostory-loading-title">Lade Videos…</div>
+                        <div class="videostory-loading-bar"><div id="videostory-loading-fill" class="videostory-loading-fill"></div></div>
+                        <div id="videostory-loading-text" class="videostory-loading-text">0%</div>
+                    </div>
+                </div>
+            </div>
+            <div class="action-buttons">
+                <button id="btn-end-videostory" class="btn btn-error">Beenden</button>
+            </div>
         </div>
     </div>
     <div id="memory-screen" class="screen">
@@ -353,6 +379,7 @@
             <div id="semantic-options" class="word-list"></div>
             <div class="action-buttons">
                 <button id="btn-semantic-replay" class="btn btn-secondary" title="Nochmal hören">🔊</button>
+                <button id="btn-semantic-thumbs-up" class="btn btn-success" disabled>Daumen hoch</button>
                 <button id="btn-semantic-expand" class="btn btn-success" style="display:none;">Mehr</button>
                 <button id="btn-end-semantic" class="btn btn-error">Beenden</button>
             </div>
@@ -420,6 +447,38 @@
             <div class="breadcrumb">Start → Für Fachkräfte und Eltern → Videos</div>
             <p class="screen-description">Beispielhafte Video-Beiträge mit kurzen Erklärtexten.</p>
             <div id="videos-content"></div>
+        </div>
+    </div>
+    <div id="books-screen" class="screen">
+        <div class="container">
+            <div class="header">
+                <div>
+                    <h2>Buch lesen</h2>
+                </div>
+            </div>
+            <div class="breadcrumb">Start → Übersicht → Buch lesen</div>
+            <p class="screen-description">Wähle ein Buch aus und öffne es im Reader.</p>
+            <div id="books-content"></div>
+            <div class="action-buttons">
+                <button id="btn-end-books" class="btn btn-error">Beenden</button>
+            </div>
+        </div>
+    </div>
+    <div id="book-reader-screen" class="screen">
+        <div class="container">
+            <div class="header">
+                <div>
+                    <h2 id="book-reader-title">Buch</h2>
+                </div>
+            </div>
+            <div class="breadcrumb">Start → Übersicht → Buch lesen → Reader</div>
+            <div class="word-image-wrap" style="height:70vh;">
+                <iframe id="book-pdf-frame" title="PDF Reader" style="width:100%;height:100%;border:0;border-radius:16px;background:#fff;"></iframe>
+            </div>
+            <div class="action-buttons">
+                <button id="btn-book-reader-back" class="btn btn-secondary">Zurück</button>
+                <button id="btn-end-book-reader" class="btn btn-error">Beenden</button>
+            </div>
         </div>
     </div>
     <!-- Training Screen -->
