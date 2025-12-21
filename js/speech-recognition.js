@@ -199,9 +199,9 @@ class SpeechRecognitionModule {
             }
         }
 
-        console.log(isCorrect ? 
-            `✅ KORREKT! "${spokenWord}" ≈ "${bestMatch}" (${(maxSimilarity * 100).toFixed(1)}%)` :
-            `❌ FALSCH! Beste Übereinstimmung: ${(maxSimilarity * 100).toFixed(1)}% (Mindestens ${this.SIMILARITY_THRESHOLD * 100}% nötig)`
+        console.log(isCorrect ?
+            `Treffer: "${spokenWord}" ≈ "${bestMatch}" (${(maxSimilarity * 100).toFixed(1)}%)` :
+            `Kein Treffer: beste Übereinstimmung ${(maxSimilarity * 100).toFixed(1)}% (Schwelle ${(required * 100).toFixed(0)}%)`
         );
 
         return {
