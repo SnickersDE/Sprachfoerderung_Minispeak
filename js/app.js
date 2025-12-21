@@ -1,4 +1,4 @@
-  
+   
 
 // State
 let currentChild = null;
@@ -63,6 +63,7 @@ const GAME_METADATA = {
     memory: { title: 'Auditives Reim-Memory', ageRange: '4–7', focusAreas: ['B', 'G', 'A'], targetSkill: 'Reime hören und merken' },
     sound: { title: 'Töne kennenlernen', ageRange: '3–6', focusAreas: ['A', 'D'], targetSkill: 'Geräusche erkennen und zuordnen' },
     video: { title: 'Erkenne im Video', ageRange: '4–7', focusAreas: ['D', 'A'], targetSkill: 'Aufmerksamkeit und Bedeutungszuordnung' },
+    videostory: { title: 'Videostory', ageRange: '4–7', focusAreas: ['D', 'A'], targetSkill: 'Ruhiges Folgen einer Geschichte (visuell)' },
     lang_memory: { title: 'Sprachgedächtnis', ageRange: '4–7', focusAreas: ['G', 'C', 'A'], targetSkill: 'Wörter halten und fehlendes Wort erkennen' },
     sentence: { title: 'Satz ergänzen', ageRange: '4–7', focusAreas: ['E', 'D', 'A'], targetSkill: 'Grammatische Intuition (rezeptiv) aufbauen' },
     semantic: { title: 'Was passt dazu?', ageRange: '3–7', focusAreas: ['D', 'C', 'A'], targetSkill: 'Alltagslogik und Bedeutungsbeziehungen' },
@@ -75,6 +76,18 @@ let storyQuizState = { promptStartedAt: 0, repetitions: 0 };
 let memoryState = { firstPickedAt: 0, repetitions: 0, manualLevel: false };
 let soundDetailState = { startedAt: 0, repetitions: 0, catKey: '', soundId: '' };
 let videoQuizState = { startedAt: 0, toggles: 0, recorded: false };
+let videoStoryRuntime = null;
+let videoStoryLastOpenAt = 0;
+
+const BOOK_LIBRARY = [
+    {
+        id: 'placeholder',
+        title: 'Platzhalter-Buch',
+        description: 'Ein kurzes Beispielbuch zum Testen des PDF-Readers.',
+        pdfSrc: null
+    }
+];
+let bookState = { activeId: '', objectUrl: '' };
 
 // UI Elemente
 const screens = {
@@ -83,10 +96,13 @@ const screens = {
     overview: document.getElementById('overview-screen'),
     training: document.getElementById('training-screen'),
     story: document.getElementById('story-screen'),
+    books: document.getElementById('books-screen'),
+    book_reader: document.getElementById('book-reader-screen'),
     memory: document.getElementById('memory-screen'),
     sound: document.getElementById('sound-screen'),
     sound_detail: document.getElementById('sound-detail-screen'),
     video: document.getElementById('video-screen'),
+    videostory: document.getElementById('videostory-screen'),
     lang_memory: document.getElementById('lang-memory-screen'),
     sentence: document.getElementById('sentence-screen'),
     semantic: document.getElementById('semantic-screen'),
@@ -454,7 +470,7 @@ function setupEventListeners() {
         });
         updateNavAudioIcon();
     }
-    
+
     const navTheme = document.getElementById('btn-nav-theme');
     if (navTheme) {
         navTheme.addEventListener('click', () => {
@@ -464,7 +480,7 @@ function setupEventListeners() {
         });
         updateNavThemeIcon();
     }
-  
+    
     const resetBtn = document.getElementById('btn-reset-progress');
     if (resetBtn) {
         resetBtn.addEventListener('click', () => {
@@ -608,39 +624,32 @@ function setupEventListeners() {
     
     const storyCard = document.getElementById('story-card');
     if (storyCard) {
-        storyCard.addEventListener('click', () => { currentVocabLevel = 1; openStoryGame(); });
+        storyCard.addEventListener('click', () => openStoryGame());
         storyCard.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
-                currentVocabLevel = 1; openStoryGame();
+                openStoryGame();
             }
         });
     }
     const storyStartBtn = document.getElementById('btn-story-start');
     if (storyStartBtn) {
         storyStartBtn.addEventListener('click', () => {
-            currentVocabLevel = 1;
             openStoryGame();
         });
     }
-    const vocab2Card = document.getElementById('vocab2-card');
-    const vocab3Card = document.getElementById('vocab3-card');
-    const vocab2StartBtn = document.getElementById('btn-vocab2-start');
-    const vocab3StartBtn = document.getElementById('btn-vocab3-start');
-    if (vocab2Card) {
-        vocab2Card.addEventListener('click', () => { currentVocabLevel = 2; openStoryGame(); });
-        vocab2Card.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); currentVocabLevel = 2; openStoryGame(); }
+    const booksCard = document.getElementById('books-card');
+    const booksStartBtn = document.getElementById('btn-books-start');
+    if (booksCard) {
+        booksCard.addEventListener('click', () => openBooksGame());
+        booksCard.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                openBooksGame();
+            }
         });
     }
-    if (vocab3Card) {
-        vocab3Card.addEventListener('click', () => { currentVocabLevel = 3; openStoryGame(); });
-        vocab3Card.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); currentVocabLevel = 3; openStoryGame(); }
-        });
-    }
-    if (vocab2StartBtn) vocab2StartBtn.addEventListener('click', () => { currentVocabLevel = 2; openStoryGame(); });
-    if (vocab3StartBtn) vocab3StartBtn.addEventListener('click', () => { currentVocabLevel = 3; openStoryGame(); });
+    if (booksStartBtn) booksStartBtn.addEventListener('click', (e) => { e.stopPropagation(); openBooksGame(); });
     const memory1Card = document.getElementById('memory1-card');
     const memory1StartBtn = document.getElementById('btn-memory1-start');
     if (memory1Card) {
@@ -662,6 +671,14 @@ function setupEventListeners() {
         videoCard.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openVideoGame(); } });
     }
     if (videoStartBtn) videoStartBtn.addEventListener('click', () => openVideoGame());
+
+    const videoStoryCard = document.getElementById('videostory-card');
+    const videoStoryStartBtn = document.getElementById('btn-videostory-start');
+    if (videoStoryCard) {
+        videoStoryCard.addEventListener('click', () => openVideoStoryGame());
+        videoStoryCard.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openVideoStoryGame(); } });
+    }
+    if (videoStoryStartBtn) videoStoryStartBtn.addEventListener('click', (e) => { e.stopPropagation(); openVideoStoryGame(); });
 
     const langMemoryCard = document.getElementById('lang-memory-card');
     const langMemoryStartBtn = document.getElementById('btn-lang-memory-start');
@@ -726,6 +743,11 @@ function setupEventListeners() {
         });
     }
 
+    const endVideoStoryBtn = document.getElementById('btn-end-videostory');
+    if (endVideoStoryBtn) endVideoStoryBtn.addEventListener('click', () => { cleanupVideoStory(); showScreen('overview'); });
+    const videoStoryNextBtn = document.getElementById('btn-videostory-next');
+    if (videoStoryNextBtn) videoStoryNextBtn.addEventListener('click', () => { if (videoStoryRuntime && typeof videoStoryRuntime.next === 'function') videoStoryRuntime.next(); });
+
     const endLangMemoryBtn = document.getElementById('btn-end-lang-memory');
     if (endLangMemoryBtn) endLangMemoryBtn.addEventListener('click', () => showScreen('overview'));
     const endSentenceBtn = document.getElementById('btn-end-sentence');
@@ -734,6 +756,12 @@ function setupEventListeners() {
     if (endSemanticBtn) endSemanticBtn.addEventListener('click', () => showScreen('overview'));
     const endListenBtn = document.getElementById('btn-end-listen');
     if (endListenBtn) endListenBtn.addEventListener('click', () => showScreen('overview'));
+    const endBooksBtn = document.getElementById('btn-end-books');
+    if (endBooksBtn) endBooksBtn.addEventListener('click', () => { cleanupBookReader(); showScreen('overview'); });
+    const bookReaderBackBtn = document.getElementById('btn-book-reader-back');
+    if (bookReaderBackBtn) bookReaderBackBtn.addEventListener('click', () => { cleanupBookReader(); showScreen('books'); renderBooks(); });
+    const endBookReaderBtn = document.getElementById('btn-end-book-reader');
+    if (endBookReaderBtn) endBookReaderBtn.addEventListener('click', () => { cleanupBookReader(); showScreen('overview'); });
     const endMetadataBtn = document.getElementById('btn-end-metadata');
     if (endMetadataBtn) endMetadataBtn.addEventListener('click', () => { showScreen('forum'); renderForum(); });
     const videoQuizStart = document.getElementById('btn-video-quiz-start');
@@ -748,23 +776,6 @@ function setupEventListeners() {
     if (videoPrevBtn) {
         videoPrevBtn.addEventListener('click', () => prevVideoStep());
     }
-    const nextBtn = document.getElementById('btn-next-level');
-    if (nextBtn) {
-        nextBtn.addEventListener('click', () => {
-            if (currentVocabLevel < 3) {
-                currentVocabLevel += 1;
-                doneWords.clear();
-                activeTargetWord = null;
-                renderStoryGame();
-                const srs2 = document.getElementById('story-recognition-status');
-                if (srs2) srs2.textContent = 'Neues Level! Tippe ein Bild.';
-            } else {
-                const srs3 = document.getElementById('story-recognition-status');
-                if (srs3) srs3.textContent = 'Alle Levels geschafft! 🎉';
-                nextBtn.style.display = 'none';
-            }
-        });
-   }
 }
 
 function updateNavThemeIcon() {
@@ -773,7 +784,6 @@ function updateNavThemeIcon() {
     const dark = appSettings.theme === 'dark';
     btn.textContent = dark ? '☀️' : '🌙';
     btn.setAttribute('aria-label', dark ? 'Light-Mode aktivieren' : 'Dark-Mode aktivieren');
-
 }
 
 function setNavMode(mode) {
@@ -828,6 +838,11 @@ function handleNavBack() {
         renderLevelsGrid();
         return;
     }
+    if (currentScreenName === 'videostory') {
+        cleanupVideoStory();
+        showScreen('overview');
+        return;
+    }
     if (currentScreenName === 'forum') {
         showScreen('landing');
         return;
@@ -847,6 +862,89 @@ function handleNavBack() {
 
 // Screen Navigation
 function showScreen(screenName) {
+    const prev = currentScreenName;
+    let logoTransition = null;
+    if (prev === 'landing' && screenName !== 'landing') {
+        const landingImg = document.getElementById('landing-title-img');
+        const navImg = document.getElementById('nav-title-img');
+        if (landingImg && navImg) {
+            const startRect = landingImg.getBoundingClientRect();
+            if (startRect.width > 2 && startRect.height > 2) {
+                const useVideo = true;
+                let movingEl = null;
+                if (useVideo) {
+                    const video = document.createElement('video');
+                    video.setAttribute('aria-hidden', 'true');
+                    video.setAttribute('playsinline', '');
+                    video.setAttribute('preload', 'auto');
+                    video.muted = true;
+                    video.loop = false;
+                    video.autoplay = true;
+                    video.controls = false;
+                    video.playsInline = true;
+                    video.disablePictureInPicture = true;
+                    const srcCandidates = ['./title.mp4', './video/title.mp4', './images/title.mp4'];
+                    let srcIndex = 0;
+                    const tryNextSrc = () => {
+                        const src = srcCandidates[srcIndex++];
+                        if (!src) return false;
+                        try {
+                            video.src = src;
+                            video.load();
+                        } catch {}
+                        return true;
+                    };
+                    const onVideoError = () => {
+                        if (tryNextSrc()) return;
+                        try { video.removeEventListener('error', onVideoError); } catch {}
+                    };
+                    video.addEventListener('error', onVideoError);
+                    tryNextSrc();
+                    video.poster = landingImg.getAttribute('src') || '';
+                    movingEl = video;
+                }
+                if (!movingEl) {
+                    const clone = landingImg.cloneNode(true);
+                    clone.removeAttribute('id');
+                    clone.setAttribute('aria-hidden', 'true');
+                    movingEl = clone;
+                }
+                Object.assign(movingEl.style, {
+                    position: 'fixed',
+                    left: `${startRect.left}px`,
+                    top: `${startRect.top}px`,
+                    width: `${startRect.width}px`,
+                    height: `${startRect.height}px`,
+                    margin: '0',
+                    pointerEvents: 'none',
+                    zIndex: '9999',
+                    transformOrigin: 'top left',
+                    transform: 'translate3d(0,0,0) scale(1)',
+                    willChange: 'transform'
+                });
+                if (movingEl.tagName && movingEl.tagName.toLowerCase() === 'video') {
+                    movingEl.style.objectFit = 'contain';
+                    movingEl.style.background = 'transparent';
+                }
+                document.body.appendChild(movingEl);
+                if (movingEl.tagName && movingEl.tagName.toLowerCase() === 'video') {
+                    try {
+                        movingEl.currentTime = 0;
+                        const p = movingEl.play();
+                        if (p && typeof p.catch === 'function') p.catch(() => {});
+                    } catch {}
+                }
+                const prevNavOpacity = navImg.style.opacity;
+                const prevNavTransition = navImg.style.transition;
+                navImg.style.transition = 'opacity 180ms ease';
+                navImg.style.opacity = '0';
+                logoTransition = { movingEl, startRect, navImg, prevNavOpacity, prevNavTransition };
+            }
+        }
+    }
+    if (prev === 'videostory' && screenName !== 'videostory') {
+        cleanupVideoStory();
+    }
     try { speechRecognition.setKeepAlive(false); } catch {}
     try { speechRecognition.setReadingMode(false); } catch {}
     try { speechRecognition.stop(); } catch {}
@@ -870,12 +968,48 @@ function showScreen(screenName) {
         const img = document.getElementById('landing-title-img');
         if (img) img.classList.remove('landing-logo-bump');
     }
+    if (logoTransition) {
+        const { movingEl, startRect, navImg, prevNavOpacity, prevNavTransition } = logoTransition;
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                const endRect = navImg.getBoundingClientRect();
+                if (!(endRect.width > 2 && endRect.height > 2)) {
+                    try { movingEl.remove(); } catch {}
+                    navImg.style.opacity = prevNavOpacity;
+                    navImg.style.transition = prevNavTransition;
+                    return;
+                }
+                const dx = endRect.left - startRect.left;
+                const dy = endRect.top - startRect.top;
+                const sx = endRect.width / startRect.width;
+                const sy = endRect.height / startRect.height;
+                const durationMs = 760;
+                movingEl.style.transition = `transform ${durationMs}ms cubic-bezier(0.18, 0.92, 0.2, 1)`;
+                let cleaned = false;
+                const cleanup = () => {
+                    if (cleaned) return;
+                    cleaned = true;
+                    try { movingEl.remove(); } catch {}
+                    navImg.style.opacity = prevNavOpacity || '1';
+                    navImg.style.transition = prevNavTransition;
+                };
+                const onEnd = (e) => {
+                    if (e.propertyName !== 'transform') return;
+                    movingEl.removeEventListener('transitionend', onEnd);
+                    cleanup();
+                };
+                movingEl.addEventListener('transitionend', onEnd);
+                setTimeout(cleanup, durationMs + 220);
+                movingEl.style.transform = `translate3d(${dx}px, ${dy}px, 0) scale(${sx}, ${sy})`;
+            });
+        });
+    }
     setNavMode(screenName === 'forum' || screenName === 'videos' ? 'experts' : 'kids');
     updateNavForumButton();
-    const gameplayScreens = new Set(['training', 'story', 'memory', 'sound', 'sound_detail', 'video', 'lang_memory', 'sentence', 'semantic', 'listen']);
+    const gameplayScreens = new Set(['training', 'story', 'memory', 'sound', 'sound_detail', 'video', 'videostory', 'lang_memory', 'sentence', 'semantic', 'listen']);
     if (gameplayScreens.has(screenName)) {
         setFocusTargets([]);
-        setFocusActive(true);
+        setFocusActive(screenName !== 'video' && screenName !== 'videostory');
     } else {
         setFocusTargets([]);
         setFocusActive(false);
@@ -933,12 +1067,41 @@ function selectChild(childId) {
     renderLevelsGrid();
 }
 
-const LEVEL_WORDS = {
-    1: ['Haus','Laus','Maus','Auto','Seil','Loch','Meer','Fuß','Tisch','Buch','Uhr','Stuhl','Turm','Pferd'],
-    2: ['Papa','Mama','Ritter','Schuhe','Hallo','Wolke','Lampe','Koffer','Tasche','Fenster','Spielzeug','Einhorn','Katze','Tatze'],
-    3: ['Krawatte','Computer','Weihnachtsmann','Pinguin','Elefant','Bauernhof','Prinzessin','Giraffe','Drache']
-};
-let currentVocabLevel = 1;
+const STORY_WORDS = [
+    'Apfel',
+    'Auto',
+    'Bauernhof',
+    'Brot',
+    'Buch',
+    'Computer',
+    'Drache',
+    'Einhorn',
+    'Elefant',
+    'Fuß',
+    'Giraffe',
+    'Haus',
+    'Hund',
+    'Krawatte',
+    'Kuh',
+    'Laus',
+    'Loch',
+    'Mama',
+    'Maus',
+    'Meer',
+    'Papa',
+    'Pferd',
+    'Pinguin',
+    'Prinzessin',
+    'Regenbogen',
+    'Ritter',
+    'Seil',
+    'Spielzeug',
+    'Stuhl',
+    'Tisch',
+    'Turm',
+    'Uhr',
+    'Weihnachtsmann'
+];
 let doneWords = new Set();
 let activeTargetWord = null;
 
@@ -953,6 +1116,12 @@ function openStoryGame() {
     storyState = { promptStartedAt: 0, repetitions: 0 };
     storyQuizState = { promptStartedAt: 0, repetitions: 0 };
     renderStoryGame();
+}
+
+function openBooksGame() {
+    cleanupBookReader();
+    showScreen('books');
+    renderBooks();
 }
 
 // Reim-Memory
@@ -1113,25 +1282,10 @@ function handleMemoryCardClick(card, imgPath, word, currentLevel) {
     const wrap = card.querySelector('.memory-card-back .word-image-wrap');
     const label = card.querySelector('.memory-card-back .word-label');
     const img = new Image();
-    const lw = String(word || '').toLowerCase();
-    const candidates = [
-        imgPath,
-        `./images/story/${lw}.png`
-    ].filter((v, i, a) => Boolean(v) && a.indexOf(v) === i);
-    let candidateIndex = 0;
-    img.src = candidates[candidateIndex];
     img.alt = word;
-    img.onerror = () => {
-        if (!wrap) return;
-        candidateIndex += 1;
-        if (candidateIndex < candidates.length) {
-            img.src = candidates[candidateIndex];
-            return;
-        }
-        const idx = parseInt(card.dataset.idx || '0', 10) || 0;
-        const difficulty = currentLevel <= 3 ? 'leicht' : currentLevel <= 7 ? 'mittel' : 'schwer';
-        img.src = generatePlaceholderPng(idx, difficulty);
-    };
+    const idx = parseInt(card.dataset.idx || '0', 10) || 0;
+    const difficulty = currentLevel <= 3 ? 'leicht' : currentLevel <= 7 ? 'mittel' : 'schwer';
+    applyWordImage(img, normalizeWordKey(word), idx, difficulty, [imgPath].filter(Boolean));
     img.onload = () => {
         if (!wrap) return;
         wrap.innerHTML = '';
@@ -1217,31 +1371,97 @@ function shuffle(arr) {
     }
     return a;
 }
+
+function normalizeWordKey(word) {
+    return String(word || '')
+        .toLowerCase()
+        .trim()
+        .replace(/[.,!?;:"']/g, '')
+        .replace(/\s+/g, '')
+        .replace(/ä/g, 'ae')
+        .replace(/ö/g, 'oe')
+        .replace(/ü/g, 'ue')
+        .replace(/ß/g, 'ss');
+}
+
+function applyWordImage(imgEl, key, idx, difficulty, preferredPaths) {
+    if (!imgEl) return;
+    const k = normalizeWordKey(key);
+    const candidates = []
+        .concat(Array.isArray(preferredPaths) ? preferredPaths : [])
+        .concat([
+            `./images/story/${k}.png`,
+            `./images/story/${k}.jpg`,
+            `./images/level1/${k}.png`,
+            `./images/level1/${k}.jpg`,
+            `./images/level2/${k}.png`,
+            `./images/level2/${k}.jpg`,
+            `./images/level3/${k}.png`,
+            `./images/level3/${k}.jpg`
+        ]);
+
+    let i = 0;
+    const tryNext = () => {
+        while (i < candidates.length) {
+            const src = candidates[i++];
+            if (src) {
+                imgEl.src = src;
+                return;
+            }
+        }
+        imgEl.onerror = null;
+        imgEl.src = generatePlaceholderPng(idx || 0, difficulty || 'leicht');
+        imgEl.style.display = 'block';
+    };
+    imgEl.onerror = tryNext;
+    tryNext();
+}
 function renderStoryGame() {
     const list = document.getElementById('story-word-list');
+    if (!list) return;
     list.innerHTML = '';
     setFocusTargets([]);
-    const words = LEVEL_WORDS[currentVocabLevel] || [];
-    const pool = shuffle(words).slice(0, Math.min(4, words.length || 0));
-    pool.forEach((word, idx) => {
-        const lw = String(word || '').toLowerCase();
+    const words = shuffle(STORY_WORDS);
+    words.forEach((word, idx) => {
+        const lw = normalizeWordKey(word);
         const card = document.createElement('div');
         card.className = 'word-card';
         card.dataset.word = lw;
-        const imgPath = `./images/story/${lw}.png`;
         card.innerHTML = `
             <div class="word-image-wrap">
-                <img src="${imgPath}" alt="${word}">
+                <img alt="${word}">
             </div>
             <div class="word-label">${word}</div>
         `;
         const imgEl = card.querySelector('img');
-        imgEl.onerror = () => {
-            imgEl.src = generatePlaceholderPng(idx, 'leicht');
-            imgEl.style.display = 'block';
-        };
+        applyWordImage(imgEl, lw, idx, 'leicht');
         card.addEventListener('click', () => {
             speakWord(word);
+            if (!storyQuizActive || !currentQuizTargetKey) return;
+            if (card.classList.contains('done')) return;
+            const nextBtn = document.getElementById('btn-story-quiz-start');
+            const responseMs = Math.round(nowMs() - (storyQuizState.promptStartedAt || nowMs()));
+            const repetitions = storyQuizState.repetitions || 0;
+            const correct = lw === currentQuizTargetKey;
+            if (correct) {
+                card.classList.add('correct');
+                markWordDone(lw);
+                updateStoryQuizProgress();
+                const srs = document.getElementById('story-recognition-status');
+                if (srs) srs.textContent = 'Richtig! Drück auf „Weiter“.';
+                if (nextBtn) { nextBtn.disabled = false; nextBtn.textContent = 'Weiter'; }
+                recordOutcomeForDimensions({ gameId: 'story', dimensions: ['C', 'A'], correct: true, responseMs, repetitions });
+                adaptDifficultyGeneric('story', { correct: true, responseMs, repetitions });
+                currentQuizTargetKey = '';
+                currentQuizTarget = '';
+                return;
+            }
+            card.classList.remove('correct');
+            card.classList.add('wrong');
+            setTimeout(() => { card.classList.remove('wrong'); }, 400);
+            storyQuizState.repetitions = repetitions + 1;
+            recordOutcomeForDimensions({ gameId: 'story', dimensions: ['C', 'A'], correct: false, responseMs, repetitions: repetitions + 1, errorCluster: `${currentQuizTargetKey}:${lw}` });
+            adaptDifficultyGeneric('story', { correct: false, responseMs, repetitions: repetitions + 1 });
         });
         list.appendChild(card);
     });
@@ -1258,15 +1478,13 @@ function renderStoryGame() {
     const quizStart = document.getElementById('btn-story-quiz-start');
     if (quizStart) {
         quizStart.onclick = () => nextStoryQuizStep();
-        quizStart.textContent = storyQuizActive ? 'nächste Frage' : 'Spiel beginnen';
+        quizStart.textContent = storyQuizActive ? 'Weiter' : 'Spiel beginnen';
         quizStart.disabled = false;
     }
     const quizMic = document.getElementById('btn-story-quiz-mic');
     if (quizMic) {
         quizMic.onclick = () => {
-            if (storyQuizActive && currentQuizTarget) {
-                speakWord(`Zeig mir ${currentQuizTarget}`);
-            }
+            if (storyQuizActive && currentQuizTarget) speakWord(`Zeig mir ${currentQuizTarget}`);
         };
     }
     const quizBack = document.getElementById('btn-story-quiz-back');
@@ -1277,9 +1495,10 @@ function renderStoryGame() {
         };
     }
     const quizWrap = document.getElementById('story-quiz-progress-wrap');
-    if (quizWrap) quizWrap.style.display = 'none';
-    if (quizMic) quizMic.style.display = 'none';
+    if (quizWrap) quizWrap.style.display = storyQuizActive ? 'block' : 'none';
+    if (quizMic) quizMic.style.display = storyQuizActive ? 'inline-block' : 'none';
     if (quizBack) quizBack.style.display = 'none';
+    if (storyQuizActive) updateStoryQuizProgress();
 }
 
 const SOUND_CATEGORIES = {
@@ -1533,112 +1752,86 @@ function highlightStoryWord(word, active) {
     });
 }
 
-// Wortschatz-Quiz mit 3 Unterleveln („Zeig mir X“)
+// Wortschatz-Quiz („Zeig mir X“)
 let storyQuizActive = false;
 let storyQuizRound = 0;
 let currentQuizTarget = '';
+let currentQuizTargetKey = '';
+
+function updateStoryQuizProgress() {
+    const fill = document.getElementById('story-quiz-progress');
+    const wrap = document.getElementById('story-quiz-progress-wrap');
+    if (wrap) wrap.style.display = storyQuizActive ? 'block' : 'none';
+    if (!fill) return;
+    const pct = STORY_WORDS.length ? Math.round((doneWords.size / STORY_WORDS.length) * 100) : 0;
+    fill.style.width = `${pct}%`;
+}
+
 function startStoryQuiz() {
     storyQuizActive = true;
     storyQuizRound = 0;
     runStoryQuizStep();
+    renderStoryGame();
 }
+
 function runStoryQuizStep() {
-    const all = LEVEL_WORDS[currentVocabLevel] || [];
-    if (!all.length) return;
-    if (storyQuizRound >= 5) {
+    const remaining = STORY_WORDS
+        .map(w => normalizeWordKey(w))
+        .filter(k => k && !doneWords.has(k));
+
+    if (!remaining.length) {
         storyQuizActive = false;
         incrementDimensionRepetitions({ dimensions: GAME_METADATA.story.focusAreas, amount: 1 });
-        renderStoryGame();
         const info = document.getElementById('story-info');
-        if (info) info.textContent = 'Super! Kleine Quizrunde geschafft.';
+        if (info) info.textContent = 'Super! Alle Bilder geschafft.';
         const srs = document.getElementById('story-recognition-status');
         if (srs) srs.textContent = 'Tippe auf „Spiel beginnen“ für eine neue Runde.';
+        const quizStart = document.getElementById('btn-story-quiz-start');
+        if (quizStart) { quizStart.disabled = false; quizStart.textContent = 'Nochmal spielen'; }
+        const quizMic = document.getElementById('btn-story-quiz-mic');
+        if (quizMic) quizMic.style.display = 'none';
+        currentQuizTargetKey = '';
+        currentQuizTarget = '';
+        updateStoryQuizProgress();
         return;
     }
-    const pool = shuffle(all).slice(0, 4);
-    currentQuizTarget = pool[0];
+
+    const targetKey = remaining[Math.floor(Math.random() * remaining.length)];
+    const targetLabel = STORY_WORDS.find(w => normalizeWordKey(w) === targetKey) || targetKey;
+    currentQuizTargetKey = targetKey;
+    currentQuizTarget = targetLabel;
     storyQuizState.promptStartedAt = nowMs();
     storyQuizState.repetitions = 0;
-    document.getElementById('story-info').textContent = `Zeig mir: ${currentQuizTarget}?`;
+    const info = document.getElementById('story-info');
+    if (info) info.textContent = `Zeig mir: ${targetLabel}?`;
     const srs = document.getElementById('story-recognition-status');
     if (srs) srs.textContent = 'Tippe das passende Bild.';
-    const progressFill = document.getElementById('story-quiz-progress');
-    if (progressFill) progressFill.style.width = `${Math.round((storyQuizRound/5)*100)}%`;
-    const quizWrap = document.getElementById('story-quiz-progress-wrap');
-    if (quizWrap) quizWrap.style.display = 'block';
+
+    const quizStart = document.getElementById('btn-story-quiz-start');
+    if (quizStart) { quizStart.disabled = true; quizStart.textContent = 'Weiter'; }
     const quizMic = document.getElementById('btn-story-quiz-mic');
     if (quizMic) quizMic.style.display = 'inline-block';
-    const quizBack = document.getElementById('btn-story-quiz-back');
-    if (quizBack) quizBack.style.display = 'inline-block';
-    const list = document.getElementById('story-word-list');
-    const info = document.getElementById('story-info');
-    setFocusTargets([]);
-    renderQuizOptions(currentQuizTarget, pool);
-    speakWord(`Zeig mir ${currentQuizTarget}`);
+
+    updateStoryQuizProgress();
+    speakWord(`Zeig mir ${targetLabel}`);
 }
-function renderQuizOptions(target, options) {
-    const list = document.getElementById('story-word-list');
-    list.innerHTML = '';
-    const opts = shuffle(options);
-    opts.forEach((word, idx) => {
-        const lw = word.toLowerCase();
-        const imgPath = `./images/story/${lw}.png`;
-        const card = document.createElement('div');
-        card.className = 'word-card';
-        card.dataset.word = lw;
-        card.innerHTML = `
-            <div class="word-image-wrap">
-                <img src="${imgPath}" alt="${word}">
-            </div>
-            <div class="word-label">${word}</div>
-        `;
-        const imgEl = card.querySelector('img');
-        imgEl.onerror = () => {
-            imgEl.src = generatePlaceholderPng(idx, 'leicht');
-            imgEl.style.display = 'block';
-        };
-        card.addEventListener('click', () => {
-            speakWord(word);
-            const correct = word === target;
-            const nextBtn = document.getElementById('btn-story-quiz-start');
-            const responseMs = Math.round(nowMs() - (storyQuizState.promptStartedAt || nowMs()));
-            const repetitions = storyQuizState.repetitions || 0;
-            if (correct) {
-                card.classList.add('correct');
-                const wrap = card.querySelector('.word-image-wrap');
-                const badge = document.createElement('div');
-                badge.className = 'done-badge';
-                badge.textContent = '✓';
-                wrap.appendChild(badge);
-                if (nextBtn) { nextBtn.disabled = false; nextBtn.textContent = 'nächste Frage'; }
-                recordOutcomeForDimensions({ gameId: 'story', dimensions: ['C', 'A'], correct: true, responseMs, repetitions });
-                adaptDifficultyGeneric('story', { correct: true, responseMs, repetitions });
-            } else {
-                card.classList.remove('correct');
-                card.classList.add('wrong');
-                setTimeout(() => { card.classList.remove('wrong'); }, 400);
-                storyQuizState.repetitions = repetitions + 1;
-                recordOutcomeForDimensions({ gameId: 'story', dimensions: ['C', 'A'], correct: false, responseMs, repetitions: repetitions + 1, errorCluster: `${target}:${word}` });
-                adaptDifficultyGeneric('story', { correct: false, responseMs, repetitions: repetitions + 1 });
-            }
-        });
-        list.appendChild(card);
-    });
-    const nextBtn = document.getElementById('btn-story-quiz-start');
-    if (nextBtn) { nextBtn.disabled = true; nextBtn.textContent = 'nächste Frage'; }
-}
+
 function nextStoryQuizStep() {
     if (!storyQuizActive) {
+        if (doneWords.size >= STORY_WORDS.length) {
+            doneWords.clear();
+            renderStoryGame();
+        }
         startStoryQuiz();
         return;
     }
     storyQuizRound++;
     runStoryQuizStep();
 }
+
 function prevStoryQuizStep() {
     if (!storyQuizActive) return;
-    storyQuizRound = Math.max(0, storyQuizRound - 1);
-    runStoryQuizStep();
+    if (currentQuizTarget) speakWord(`Zeig mir ${currentQuizTarget}`);
 }
 
 const VIDEO_LEVELS = [
@@ -1692,23 +1885,19 @@ function startVideoQuiz() {
     const quizStart = document.getElementById('btn-video-quiz-start');
     if (quizStart) quizStart.disabled = true;
     v.options.forEach((opt, idx) => {
-        const lw = opt.toLowerCase();
-        const imgPath = `./images/story/${lw}.png`;
+        const lw = normalizeWordKey(opt);
         const card = document.createElement('div');
         card.className = 'word-card';
         card.dataset.opt = opt;
         card.dataset.word = lw;
         card.innerHTML = `
             <div class="word-image-wrap">
-                <img src="${imgPath}" alt="${opt}">
+                <img alt="${opt}">
             </div>
             <div class="word-label">${opt}</div>
         `;
         const img = card.querySelector('img');
-        img.onerror = () => {
-            img.src = generatePlaceholderPng(idx, 'mittel');
-            img.style.display = 'block';
-        };
+        applyWordImage(img, lw, idx, 'mittel');
         card.addEventListener('click', () => {
             videoQuizState.toggles = (videoQuizState.toggles || 0) + 1;
             const wasSelected = videoSelected.has(opt);
@@ -1769,11 +1958,279 @@ function prevVideoStep() {
     }
 }
 
+const VIDEOSTORY_LIBRARY = {
+    demo: {
+        id: 'demo',
+        title: 'Videostory',
+        startSceneId: 'scene1',
+        scenes: [
+            { id: 'scene1', videoSrc: './video/videostory/Video1.mp4', nextSceneId: 'scene2' },
+            { id: 'scene2', videoSrc: './video/videostory/Video2.mp4', nextSceneId: 'scene3' },
+            { id: 'scene3', videoSrc: './video/videostory/Video3.mp4', nextSceneId: null }
+        ]
+    }
+};
+
+function openVideoStoryGame(storyId = 'demo') {
+    const t = nowMs();
+    if (t - videoStoryLastOpenAt < 650) return;
+    videoStoryLastOpenAt = t;
+    const story = VIDEOSTORY_LIBRARY[storyId] || Object.values(VIDEOSTORY_LIBRARY)[0];
+    if (!story) return;
+    if (!videoStoryRuntime) videoStoryRuntime = createVideoStoryRuntime();
+    videoStoryRuntime.open(story);
+}
+
+function cleanupVideoStory() {
+    try { videoStoryRuntime?.close(); } catch {}
+}
+
+function createVideoStoryRuntime() {
+    const state = {
+        story: null,
+        sceneById: new Map(),
+        currentSceneId: '',
+        transitioning: false,
+        activeSlot: 'a',
+        preloaded: new Map()
+    };
+
+    const els = () => ({
+        stage: document.getElementById('videostory-stage'),
+        videoA: document.getElementById('videostory-video-a'),
+        videoB: document.getElementById('videostory-video-b'),
+        nextBtn: document.getElementById('btn-videostory-next'),
+        dim: document.getElementById('videostory-dim'),
+        loading: document.getElementById('videostory-loading'),
+        loadingFill: document.getElementById('videostory-loading-fill'),
+        loadingText: document.getElementById('videostory-loading-text')
+    });
+
+    const setLoading = (on) => {
+        const { loading } = els();
+        if (!loading) return;
+        loading.style.display = on ? 'flex' : 'none';
+    };
+
+    const updateLoading = (pct) => {
+        const { loadingFill, loadingText } = els();
+        const p = clamp(Math.round(pct), 0, 100);
+        if (loadingFill) loadingFill.style.width = `${p}%`;
+        if (loadingText) loadingText.textContent = `${p}%`;
+    };
+
+    const normalizeVideoEl = (v) => {
+        if (!v) return;
+        v.muted = true;
+        v.loop = true;
+        v.autoplay = true;
+        v.playsInline = true;
+        v.controls = false;
+        v.preload = 'auto';
+    };
+
+    const preloadSrc = async (src, timeoutMs = 6500) => {
+        if (!src) return false;
+        if (state.preloaded.has(src)) return true;
+        return await new Promise(resolve => {
+            const v = document.createElement('video');
+            normalizeVideoEl(v);
+            let done = false;
+            const finish = (ok) => {
+                if (done) return;
+                done = true;
+                try { v.removeAttribute('src'); v.load(); } catch {}
+                state.preloaded.set(src, ok);
+                resolve(ok);
+            };
+            const onOk = () => finish(true);
+            const onErr = () => finish(false);
+            v.addEventListener('canplaythrough', onOk, { once: true });
+            v.addEventListener('loadeddata', onOk, { once: true });
+            v.addEventListener('error', onErr, { once: true });
+            try {
+                v.src = src;
+                v.load();
+            } catch {
+                finish(false);
+                return;
+            }
+            setTimeout(() => finish(true), timeoutMs);
+        });
+    };
+
+    const ensureVideoSrc = async (videoEl, src) => {
+        if (!videoEl || !src) return false;
+        normalizeVideoEl(videoEl);
+        if (videoEl.getAttribute('src') === src) return true;
+        return await new Promise(resolve => {
+            let done = false;
+            const finish = (ok) => {
+                if (done) return;
+                done = true;
+                resolve(ok);
+            };
+            const onOk = () => finish(true);
+            const onErr = () => finish(false);
+            videoEl.addEventListener('loadeddata', onOk, { once: true });
+            videoEl.addEventListener('canplay', onOk, { once: true });
+            videoEl.addEventListener('error', onErr, { once: true });
+            try {
+                videoEl.setAttribute('src', src);
+                videoEl.load();
+            } catch {
+                finish(false);
+                return;
+            }
+            setTimeout(() => finish(true), 5000);
+        });
+    };
+
+    const playMuted = async (videoEl) => {
+        if (!videoEl) return;
+        try {
+            videoEl.muted = true;
+            await videoEl.play();
+        } catch {}
+    };
+
+    const setActiveClasses = (activeEl, inactiveEl) => {
+        [activeEl, inactiveEl].forEach(v => {
+            if (!v) return;
+            v.classList.remove('is-active', 'is-incoming', 'is-outgoing');
+        });
+        if (activeEl) activeEl.classList.add('is-active');
+    };
+
+    const applyTransition = async ({ outgoingEl, incomingEl }) => {
+        const { stage, nextBtn } = els();
+        if (!stage || !outgoingEl || !incomingEl) return;
+        stage.classList.add('is-transitioning');
+        outgoingEl.classList.add('is-outgoing');
+        incomingEl.classList.add('is-incoming');
+        await playMuted(incomingEl);
+        await sleep(560);
+        outgoingEl.classList.remove('is-active', 'is-outgoing', 'is-incoming');
+        incomingEl.classList.remove('is-incoming', 'is-outgoing');
+        incomingEl.classList.add('is-active');
+        stage.classList.remove('is-transitioning');
+        if (nextBtn) nextBtn.disabled = false;
+        try { outgoingEl.pause(); } catch {}
+    };
+
+    const getScene = (sceneId) => {
+        if (!sceneId) return null;
+        return state.sceneById.get(sceneId) || null;
+    };
+
+    const updateNextBtn = (scene) => {
+        const { nextBtn } = els();
+        if (!nextBtn) return;
+        nextBtn.disabled = false;
+        nextBtn.textContent = scene?.nextSceneId ? 'Weiter' : 'Fertig';
+    };
+
+    const showScene = async (sceneId, { initial = false } = {}) => {
+        const scene = getScene(sceneId);
+        if (!scene) return;
+        const { videoA, videoB, nextBtn } = els();
+        const activeEl = state.activeSlot === 'a' ? videoA : videoB;
+        const inactiveEl = state.activeSlot === 'a' ? videoB : videoA;
+        if (!activeEl || !inactiveEl) return;
+        if (nextBtn) nextBtn.disabled = true;
+        if (initial) {
+            await preloadSrc(scene.videoSrc, 5000);
+            await ensureVideoSrc(activeEl, scene.videoSrc);
+            setActiveClasses(activeEl, inactiveEl);
+            await playMuted(activeEl);
+            state.currentSceneId = scene.id;
+            updateNextBtn(scene);
+            return;
+        }
+        await preloadSrc(scene.videoSrc, 5000);
+        await ensureVideoSrc(inactiveEl, scene.videoSrc);
+        setActiveClasses(activeEl, inactiveEl);
+        inactiveEl.classList.add('is-incoming');
+        await applyTransition({ outgoingEl: activeEl, incomingEl: inactiveEl });
+        state.activeSlot = state.activeSlot === 'a' ? 'b' : 'a';
+        state.currentSceneId = scene.id;
+        updateNextBtn(scene);
+    };
+
+    const preloadStory = async (story) => {
+        const scenes = Array.isArray(story?.scenes) ? story.scenes : [];
+        const total = scenes.length || 1;
+        let done = 0;
+        setLoading(true);
+        updateLoading(0);
+        for (const s of scenes) {
+            await preloadSrc(s.videoSrc);
+            done++;
+            updateLoading((done / total) * 100);
+            await sleep(30);
+        }
+        await sleep(160);
+        setLoading(false);
+    };
+
+    const open = async (story) => {
+        close();
+        state.story = story;
+        state.sceneById = new Map((story.scenes || []).map(s => [s.id, s]));
+        state.currentSceneId = '';
+        state.transitioning = false;
+        state.activeSlot = 'a';
+        showScreen('videostory');
+        const { nextBtn, videoA, videoB } = els();
+        if (nextBtn) { nextBtn.disabled = true; nextBtn.textContent = 'Weiter'; }
+        [videoA, videoB].forEach(v => { if (v) v.removeAttribute('src'); });
+        await preloadStory(story);
+        const startId = story.startSceneId || (story.scenes && story.scenes[0] ? story.scenes[0].id : '');
+        await showScene(startId, { initial: true });
+    };
+
+    const next = async () => {
+        if (state.transitioning) return;
+        const cur = getScene(state.currentSceneId);
+        if (!cur) return;
+        if (!cur.nextSceneId) {
+            cleanupVideoStory();
+            showScreen('overview');
+            return;
+        }
+        state.transitioning = true;
+        const { nextBtn } = els();
+        if (nextBtn) nextBtn.disabled = true;
+        await preloadSrc(getScene(cur.nextSceneId)?.videoSrc || '');
+        await showScene(cur.nextSceneId, { initial: false });
+        state.transitioning = false;
+    };
+
+    const close = () => {
+        const { stage, videoA, videoB, nextBtn } = els();
+        if (stage) stage.classList.remove('is-transitioning');
+        [videoA, videoB].forEach(v => {
+            if (!v) return;
+            v.classList.remove('is-active', 'is-incoming', 'is-outgoing');
+            try { v.pause(); } catch {}
+            try { v.removeAttribute('src'); v.load(); } catch {}
+        });
+        if (nextBtn) nextBtn.disabled = false;
+        setLoading(false);
+        updateLoading(0);
+        state.story = null;
+        state.sceneById = new Map();
+        state.currentSceneId = '';
+        state.transitioning = false;
+        state.activeSlot = 'a';
+    };
+
+    return { open, next, close };
+}
+
 // Fokus: Ein Lernschritt pro Interaktion. Audio führt, Visuals unterstützen.
 // Spiele sind Werkzeuge für gemeinsame Entwicklungsdimensionen (A–G) und Stufen (1–4).
 // Fehler sind Lernsignale: Wiederholung + Modellierung + langsameres Tempo, ohne negatives Markieren.
-
-const BASE_WORD_POOL = Array.from(new Set(Object.values(LEVEL_WORDS).flat().map(w => String(w || '').toLowerCase()).filter(Boolean)));
 
 function pickN(arr, n) {
     const a = arr.slice();
@@ -1807,23 +2264,19 @@ function renderWordCard({ word, label, imageKey, idx, difficulty, onClick, showL
     card.className = 'word-card';
     const key = typeof imageKey === 'string' && imageKey.trim() ? imageKey : word;
     const text = typeof label === 'string' && label.trim() ? label : word;
-    const lw = String(key || '').toLowerCase();
+    const lw = normalizeWordKey(key);
     card.dataset.word = lw;
-    const imgPath = `./images/story/${lw}.png`;
     const labelHtml = showLabel ? `<div class="word-label">${text}</div>` : '';
     const microLabelHtml = showMicroLabel ? `<div class="micro-label">${text}</div>` : '';
     card.innerHTML = `
         <div class="word-image-wrap">
-            <img src="${imgPath}" alt="${text}">
+            <img alt="${text}">
             ${microLabelHtml}
         </div>
         ${labelHtml}
     `;
     const imgEl = card.querySelector('img');
-    imgEl.onerror = () => {
-        imgEl.src = generatePlaceholderPng(idx || 0, difficulty || 'leicht');
-        imgEl.style.display = 'block';
-    };
+    applyWordImage(imgEl, lw, idx || 0, difficulty || 'leicht');
     if (typeof onClick === 'function') card.addEventListener('click', () => onClick(card, lw));
     return card;
 }
@@ -2416,7 +2869,7 @@ function getListenTier(level) {
 function createListenRevealCard(word, idx, difficulty) {
     const card = document.createElement('div');
     card.className = 'word-card memory-card listen-reveal-card';
-    const lw = String(word || '').toLowerCase();
+    const lw = normalizeWordKey(word);
     card.dataset.word = lw;
 
     const inner = document.createElement('div');
@@ -2438,11 +2891,7 @@ function createListenRevealCard(word, idx, difficulty) {
     backWrap.className = 'word-image-wrap';
     const img = new Image();
     img.alt = word;
-    img.src = `./images/story/${lw}.png`;
-    img.onerror = () => {
-        img.src = generatePlaceholderPng(idx || 0, difficulty || 'leicht');
-        img.style.display = 'block';
-    };
+    applyWordImage(img, lw, idx || 0, difficulty || 'leicht');
     backWrap.appendChild(img);
     back.appendChild(backWrap);
 
@@ -2950,6 +3399,103 @@ function renderVideos() {
         root.appendChild(card);
     });
 }
+
+function renderBooks() {
+    const root = document.getElementById('books-content');
+    if (!root) return;
+    root.innerHTML = '';
+    BOOK_LIBRARY.forEach((b, idx) => {
+        const card = document.createElement('div');
+        card.className = 'level-card';
+        card.innerHTML = `
+            <div class="level-header">
+                <div class="level-icon">📄</div>
+                <div class="difficulty-badge difficulty-leicht">Buch</div>
+            </div>
+            <h3>${b.title}</h3>
+            <p>${b.description}</p>
+            <button class="btn btn-success" style="padding:10px 16px;border-radius:12px;font-size:0.95rem;">Lesen</button>
+        `;
+        card.setAttribute('role', 'button');
+        card.setAttribute('tabindex', '0');
+        card.setAttribute('aria-label', `${b.title} lesen`);
+        const open = () => openBookReader(b.id);
+        const btn = card.querySelector('button');
+        if (btn) btn.addEventListener('click', (e) => { e.stopPropagation(); open(); });
+        card.addEventListener('click', open);
+        card.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
+        });
+        root.appendChild(card);
+    });
+}
+
+function openBookReader(bookId) {
+    const book = BOOK_LIBRARY.find(b => b.id === bookId) || BOOK_LIBRARY[0];
+    if (!book) return;
+    bookState.activeId = book.id;
+    const title = document.getElementById('book-reader-title');
+    if (title) title.textContent = book.title || 'Buch';
+    const frame = document.getElementById('book-pdf-frame');
+    if (frame) {
+        frame.src = book.pdfSrc || ensurePlaceholderPdfUrl();
+    }
+    showScreen('book_reader');
+}
+
+function cleanupBookReader() {
+    const frame = document.getElementById('book-pdf-frame');
+    if (frame) frame.src = 'about:blank';
+    if (bookState.objectUrl) {
+        try { URL.revokeObjectURL(bookState.objectUrl); } catch {}
+    }
+    bookState.objectUrl = '';
+    bookState.activeId = '';
+}
+
+function ensurePlaceholderPdfUrl() {
+    if (bookState.objectUrl) return bookState.objectUrl;
+    const bytes = buildPlaceholderPdfBytes('Platzhalter PDF: Buch lesen');
+    const blob = new Blob([bytes], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    bookState.objectUrl = url;
+    return url;
+}
+
+function buildPlaceholderPdfBytes(titleText) {
+    const enc = new TextEncoder();
+    const parts = [];
+    let length = 0;
+    const push = (s) => { parts.push(s); length += enc.encode(s).length; };
+    const offsets = Array(6).fill(0);
+    const escapePdf = (s) => String(s || '').replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
+    const addObj = (n, body) => {
+        offsets[n] = length;
+        push(`${n} 0 obj\n${body}\nendobj\n`);
+    };
+
+    push('%PDF-1.4\n');
+    addObj(1, '<< /Type /Catalog /Pages 2 0 R >>');
+    addObj(2, '<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
+    addObj(3, '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>');
+
+    const content = `BT\n/F1 26 Tf\n72 770 Td\n(${escapePdf(titleText)}) Tj\nET\n`;
+    const contentLen = enc.encode(content).length;
+    addObj(4, `<< /Length ${contentLen} >>\nstream\n${content}endstream`);
+    addObj(5, '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
+
+    const xrefOffset = length;
+    const pad10 = (n) => String(n).padStart(10, '0');
+    push('xref\n0 6\n');
+    push('0000000000 65535 f \n');
+    for (let i = 1; i <= 5; i++) {
+        push(`${pad10(offsets[i])} 00000 n \n`);
+    }
+    push('trailer\n<< /Size 6 /Root 1 0 R >>\n');
+    push(`startxref\n${xrefOffset}\n%%EOF\n`);
+
+    return enc.encode(parts.join(''));
+}
 function markWordDone(word) {
     const list = document.getElementById('story-word-list');
     const card = Array.from(list.querySelectorAll('.word-card')).find(el => el.dataset.word === word);
@@ -2962,9 +3508,7 @@ function markWordDone(word) {
         wrap.appendChild(badge);
         card.classList.add('done');
         doneWords.add(word);
-        const words = LEVEL_WORDS[currentVocabLevel] || [];
-        const nextBtn = document.getElementById('btn-next-level');
-        if (nextBtn) nextBtn.style.display = doneWords.size >= words.length && words.length ? 'inline-block' : 'none';
+        updateStoryQuizProgress();
     }
 }
 
@@ -3152,25 +3696,20 @@ function renderTrainingScreen() {
     currentSublevelData.reim_ideen.forEach((word, idx) => {
         const wordCard = document.createElement('div');
         wordCard.className = 'word-card';
-        wordCard.dataset.word = word.toLowerCase();
-        const imgPath = `./images/${currentSublevelData.bild_ordner}/${word.toLowerCase()}.png`;
-        const placeholderName = `Beispiel${idx + 1}`;
+        const key = normalizeWordKey(word);
+        wordCard.dataset.word = key;
+        const preferred = [`./images/${currentSublevelData.bild_ordner}/${key}.png`, `./images/${currentSublevelData.bild_ordner}/${key}.jpg`];
         wordCard.innerHTML = `
             <div class="word-image-wrap">
-                <img src="${imgPath}" alt="${word}">
+                <img alt="${word}">
             </div>
             <div class="word-label">${word}</div>
         `;
         const imgEl = wordCard.querySelector('img');
-        imgEl.onload = () => { /* nothing */ };
-        imgEl.onerror = () => {
-            imgEl.src = generatePlaceholderPng(idx, currentLevelData.schwierigkeitsgrad);
-            imgEl.style.display = 'block';
-        };
+        applyWordImage(imgEl, key, idx, currentLevelData.schwierigkeitsgrad, preferred);
         wordCard.addEventListener('click', () => {
             speakWord(word);
         });
-        wordCard.dataset.word = word.toLowerCase();
         wordList.appendChild(wordCard);
     });
     
@@ -3416,4 +3955,3 @@ function setupLandingDice() {
     window.addEventListener('touchmove', onMove, { passive: false });
     window.addEventListener('touchend', onUp);
 }
-
