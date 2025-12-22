@@ -1,4 +1,4 @@
-
+   
 
 // State
 let currentChild = null;
@@ -3323,14 +3323,285 @@ const SENTENCE_ITEMS = [
     { level: 29, fragment: 'Beim Vorlesen höre ich', endings: ['gut zu.', 'aus dem Fenster.', 'in die Schuhe.'], correct: 0 },
     { level: 30, fragment: 'Wenn ich fertig bin, drücke ich', endings: ['auf Weiter.', 'auf den Regen.', 'auf die Wolke.'], correct: 0 }
 ];
-let sentenceState = { item: null, repetitions: 0, promptStartedAt: 0, locked: false, selectedIndex: null, phase: 'intro' };
+let sentenceState = { item: null, repetitions: 0, promptStartedAt: 0, locked: false, selectedIndex: null, phase: 'intro', started: false, needsIntro: true, guideToken: 0 };
 let sentenceLastOpenAt = 0;
 let sentenceIntroToken = 0;
 let sentenceNextAttentionTimeout = null;
+let sentenceBuilderState = { active: false, tokens: [], keys: [], placed: [], currentSentence: '', tileOrder: [], speechStarted: false };
+let sentenceBuilderTouchDrag = null;
+let sentenceBuilderSpeechChain = Promise.resolve();
 
-const SENTENCE_INTRO_TEXT = 'Gleich hörst du einen Satz. Hör gut zu und such dir das Bild aus, das am besten dazu passt.\nWenn du bereit bist, drück auf den Lautsprecher.';
-const SENTENCE_START_HINT = 'Drück auf 🔊 um zu hören.';
-const SENTENCE_READY_TEXT = 'Such dir etwas aus.\nIch lese es dir gerne vor.\nDer Lautsprecher sagt es nochmal.\nDer grüne Knopf zeigt dir die Lösung.';
+function getSentenceBuilderEls() {
+    return {
+        wrap: document.getElementById('sentence-builder'),
+        slots: document.getElementById('sentence-builder-slots'),
+        tiles: document.getElementById('sentence-builder-tiles'),
+        options: document.getElementById('sentence-options')
+    };
+}
+
+function sentenceToTokens(text) {
+    const raw = String(text || '').trim();
+    if (!raw) return [];
+    return raw
+        .replace(/[.,!?;:"']/g, '')
+        .split(/\s+/g)
+        .filter(Boolean);
+}
+
+function showSentenceBuilder(on) {
+    const { wrap, options } = getSentenceBuilderEls();
+    if (wrap) wrap.style.display = on ? 'block' : 'none';
+    if (options) options.style.display = on ? 'none' : 'grid';
+}
+
+function resetSentenceBuilder() {
+    sentenceBuilderState = { active: false, tokens: [], keys: [], placed: [], currentSentence: '', tileOrder: [], speechStarted: false };
+    sentenceBuilderTouchDrag = null;
+    sentenceBuilderSpeechChain = Promise.resolve();
+    const { slots, tiles } = getSentenceBuilderEls();
+    if (slots) slots.innerHTML = '';
+    if (tiles) tiles.innerHTML = '';
+    showSentenceBuilder(false);
+}
+
+function queueSentenceBuilderSpeech(text) {
+    const t = String(text || '').trim();
+    if (!t) return sentenceBuilderSpeechChain;
+    const cancelBefore = !sentenceBuilderState.speechStarted;
+    sentenceBuilderState.speechStarted = true;
+    sentenceBuilderSpeechChain = sentenceBuilderSpeechChain.then(() => speakAsync(t, { rate: 0.7, pitch: 1.05, cancelBefore }));
+    return sentenceBuilderSpeechChain;
+}
+
+function getSentenceSlotFromPoint(x, y) {
+    try {
+        const el = document.elementFromPoint(x, y);
+        return el ? el.closest('.sentence-slot') : null;
+    } catch {
+        return null;
+    }
+}
+
+function setSentenceSlotWrong(slotEl) {
+    if (!slotEl) return;
+    slotEl.classList.remove('is-drop-target');
+    slotEl.classList.add('is-wrong');
+    setTimeout(() => {
+        try { slotEl.classList.remove('is-wrong'); } catch {}
+    }, 1000);
+}
+
+function updateSentenceBuilderNextButton() {
+    if (!sentenceBuilderState.active) return;
+    const next = document.getElementById('btn-sentence-next');
+    if (!next) return;
+    const complete = sentenceBuilderState.placed.every(Boolean);
+    next.disabled = !complete;
+    if (complete) flashSentenceNextAttention(1400);
+}
+
+function renderSentenceBuilder() {
+    const { slots, tiles } = getSentenceBuilderEls();
+    if (!slots || !tiles) return;
+    slots.innerHTML = '';
+    tiles.innerHTML = '';
+
+    sentenceBuilderState.keys.forEach((k, idx) => {
+        const slot = document.createElement('div');
+        slot.className = 'sentence-slot';
+        slot.dataset.slotIndex = String(idx);
+        const placedKey = sentenceBuilderState.placed[idx] || '';
+        if (placedKey) {
+            const img = document.createElement('img');
+            img.alt = sentenceBuilderState.tokens[idx] || '';
+            applyWordImage(img, placedKey, idx, 'leicht');
+            slot.appendChild(img);
+        }
+        slot.addEventListener('click', () => {
+            if (sentenceState.locked) return;
+            if (!sentenceBuilderState.active) return;
+            const cur = sentenceBuilderState.placed[idx];
+            if (!cur) return;
+            sentenceBuilderState.placed[idx] = '';
+            renderSentenceBuilder();
+        });
+        slots.appendChild(slot);
+    });
+
+    const tileOrder = Array.isArray(sentenceBuilderState.tileOrder) && sentenceBuilderState.tileOrder.length
+        ? sentenceBuilderState.tileOrder
+        : shuffle(sentenceBuilderState.keys.map((_, i) => i));
+    tileOrder.forEach((idx) => {
+        const k = sentenceBuilderState.keys[idx];
+        if (sentenceBuilderState.placed.includes(k)) return;
+        const card = document.createElement('div');
+        card.className = 'word-card';
+        card.setAttribute('draggable', 'false');
+        card.dataset.tileKey = k;
+        card.dataset.tileIndex = String(idx);
+        const wrap = document.createElement('div');
+        wrap.className = 'word-image-wrap';
+        const img = document.createElement('img');
+        img.alt = sentenceBuilderState.tokens[idx] || '';
+        img.setAttribute('draggable', 'false');
+        applyWordImage(img, k, idx, 'leicht');
+        wrap.appendChild(img);
+        card.appendChild(wrap);
+
+        card.addEventListener('pointerdown', (e) => {
+            if (sentenceState.locked) return;
+            if (!sentenceBuilderState.active) return;
+            if (!e.isPrimary) return;
+            if (sentenceBuilderState.placed.includes(k)) return;
+            sentenceBuilderTouchDrag = {
+                pointerId: e.pointerId,
+                key: k,
+                tileIndex: idx,
+                sourceEl: card,
+                started: false,
+                startX: e.clientX,
+                startY: e.clientY,
+                ghostEl: null,
+                offsetX: 0,
+                offsetY: 0,
+                lastX: e.clientX,
+                lastY: e.clientY,
+                rafId: null,
+                overSlotEl: null
+            };
+            try { card.setPointerCapture(e.pointerId); } catch {}
+        });
+
+        card.addEventListener('pointermove', (e) => {
+            const s = sentenceBuilderTouchDrag;
+            if (!s) return;
+            if (e.pointerId !== s.pointerId) return;
+            s.lastX = e.clientX;
+            s.lastY = e.clientY;
+
+            const dx = e.clientX - s.startX;
+            const dy = e.clientY - s.startY;
+            const dist = Math.hypot(dx, dy);
+            if (!s.started && dist < 6) return;
+
+            if (!s.started) {
+                s.started = true;
+                const r = card.getBoundingClientRect();
+                s.offsetX = s.startX - r.left;
+                s.offsetY = s.startY - r.top;
+                const ghost = card.cloneNode(true);
+                ghost.classList.add('sentence-drag-ghost');
+                ghost.style.width = `${r.width}px`;
+                ghost.style.height = `${r.height}px`;
+                document.body.appendChild(ghost);
+                s.ghostEl = ghost;
+                card.classList.add('is-dragging');
+            }
+
+            if (s.ghostEl && s.rafId == null) {
+                s.rafId = requestAnimationFrame(() => {
+                    s.rafId = null;
+                    if (!s.ghostEl) return;
+                    s.ghostEl.style.left = `${s.lastX - s.offsetX}px`;
+                    s.ghostEl.style.top = `${s.lastY - s.offsetY}px`;
+                });
+            }
+
+            const slotEl = getSentenceSlotFromPoint(e.clientX, e.clientY);
+            const slotIndex = slotEl ? parseInt(slotEl.dataset.slotIndex || '-1', 10) : -1;
+            const canDrop = !!slotEl && slotIndex >= 0 && !sentenceBuilderState.placed[slotIndex];
+            const nextOver = canDrop ? slotEl : null;
+            if (s.overSlotEl && s.overSlotEl !== nextOver) {
+                try { s.overSlotEl.classList.remove('is-drop-target'); } catch {}
+            }
+            s.overSlotEl = nextOver;
+            if (nextOver) nextOver.classList.add('is-drop-target');
+        });
+
+        card.addEventListener('pointerup', async (e) => {
+            const s = sentenceBuilderTouchDrag;
+            if (!s) return;
+            if (e.pointerId !== s.pointerId) return;
+            sentenceBuilderTouchDrag = null;
+
+            card.classList.remove('is-dragging');
+            if (s.rafId != null) {
+                cancelAnimationFrame(s.rafId);
+                s.rafId = null;
+            }
+            if (s.ghostEl) {
+                try { s.ghostEl.remove(); } catch {}
+                s.ghostEl = null;
+            }
+            if (s.overSlotEl) {
+                try { s.overSlotEl.classList.remove('is-drop-target'); } catch {}
+            }
+            if (!s.started) return;
+
+            const slotEl = getSentenceSlotFromPoint(e.clientX, e.clientY);
+            const slotIndex = slotEl ? parseInt(slotEl.dataset.slotIndex || '-1', 10) : -1;
+            if (!slotEl || slotIndex < 0) return;
+            if (sentenceBuilderState.placed[slotIndex]) {
+                setSentenceSlotWrong(slotEl);
+                return;
+            }
+            const expected = sentenceBuilderState.keys[slotIndex];
+            if (s.key !== expected) {
+                setSentenceSlotWrong(slotEl);
+                return;
+            }
+
+            sentenceBuilderState.placed[slotIndex] = s.key;
+            renderSentenceBuilder();
+            updateSentenceBuilderNextButton();
+            await queueSentenceBuilderSpeech(sentenceBuilderState.tokens[slotIndex] || '');
+            if (sentenceBuilderState.placed.every(Boolean)) {
+                await queueSentenceBuilderSpeech(sentenceBuilderState.currentSentence);
+            }
+        });
+
+        card.addEventListener('pointercancel', () => {
+            const s = sentenceBuilderTouchDrag;
+            if (!s) return;
+            sentenceBuilderTouchDrag = null;
+            card.classList.remove('is-dragging');
+            if (s.rafId != null) {
+                cancelAnimationFrame(s.rafId);
+                s.rafId = null;
+            }
+            if (s.ghostEl) {
+                try { s.ghostEl.remove(); } catch {}
+                s.ghostEl = null;
+            }
+            if (s.overSlotEl) {
+                try { s.overSlotEl.classList.remove('is-drop-target'); } catch {}
+            }
+        });
+
+        tiles.appendChild(card);
+    });
+
+    updateSentenceBuilderNextButton();
+}
+
+function startSentenceBuilder(fullSentence) {
+    const tokens = sentenceToTokens(fullSentence);
+    const keys = tokens.map(t => normalizeWordKey(t));
+    sentenceBuilderState = {
+        active: true,
+        tokens,
+        keys,
+        placed: new Array(tokens.length).fill(''),
+        currentSentence: fullSentence,
+        tileOrder: shuffle(keys.map((_, i) => i)),
+        speechStarted: false
+    };
+    const next = document.getElementById('btn-sentence-next');
+    if (next) next.disabled = true;
+    showSentenceBuilder(true);
+    renderSentenceBuilder();
+}
 
 function setSentenceStageText(text) {
     const stageBox = document.getElementById('sentence-stage');
@@ -3344,6 +3615,125 @@ function setSentenceStageText(text) {
     p.style.whiteSpace = 'pre-line';
     p.textContent = t;
     stageBox.appendChild(p);
+}
+
+const sentenceGuideShakeTimers = new WeakMap();
+function shakeSentenceGuideEl(el) {
+    if (!el) return;
+    try { el.classList.remove('sentence-guide-shake'); } catch {}
+    try { void el.offsetWidth; } catch {}
+    try { el.classList.add('sentence-guide-shake'); } catch {}
+    const prev = sentenceGuideShakeTimers.get(el);
+    if (prev) clearTimeout(prev);
+    const t = setTimeout(() => {
+        try { el.classList.remove('sentence-guide-shake'); } catch {}
+        sentenceGuideShakeTimers.delete(el);
+    }, 1000);
+    sentenceGuideShakeTimers.set(el, t);
+}
+
+function setSentenceStageGuideIcons(flags = {}) {
+    const stageBox = document.getElementById('sentence-stage');
+    if (!stageBox) return;
+    const showEar = !!flags.ear;
+    const showMagnifier = !!flags.magnifier;
+    const showSpeaker = !!flags.speaker;
+    const showSolution = !!flags.solution;
+    stageBox.innerHTML = '';
+    const row = document.createElement('div');
+    row.className = 'sentence-stage-icons';
+    const addIcon = (txt) => {
+        const el = document.createElement('div');
+        el.className = 'sentence-stage-icon';
+        el.textContent = txt;
+        row.appendChild(el);
+        return el;
+    };
+    const created = { earEl: null, magnifierEl: null, speakerBtn: null, solutionBtn: null };
+    if (showEar) created.earEl = addIcon('👂');
+    if (showMagnifier) created.magnifierEl = addIcon('🔍');
+    if (showSpeaker) {
+        const btn = document.createElement('button');
+        btn.id = 'btn-sentence-replay-mini';
+        btn.className = 'btn btn-success';
+        btn.type = 'button';
+        btn.textContent = '🔊';
+        row.appendChild(btn);
+        created.speakerBtn = btn;
+    }
+    if (showSolution) {
+        const btn = document.createElement('button');
+        btn.id = 'btn-sentence-solution-mini';
+        btn.className = 'btn btn-success';
+        btn.type = 'button';
+        btn.textContent = '👍';
+        row.appendChild(btn);
+        created.solutionBtn = btn;
+    }
+    stageBox.appendChild(row);
+    if (created.speakerBtn) {
+        created.speakerBtn.onclick = async () => {
+            if (!sentenceState.started) return;
+            await replaySentencePrompt();
+        };
+    }
+    if (created.solutionBtn) {
+        created.solutionBtn.onclick = async () => {
+            if (!sentenceState.started) return;
+            if (sentenceState.locked) return;
+            await revealSentenceSolution();
+        };
+    }
+    return created;
+}
+
+async function revealSentenceSolution() {
+    const item = sentenceState.item;
+    if (!item) return;
+    if (sentenceState.locked) return;
+    sentenceState.locked = true;
+
+    const opts = document.getElementById('sentence-options');
+    const cards = opts ? Array.from(opts.querySelectorAll('.word-card')) : [];
+    cards.forEach(el => el.classList.remove('selected', 'maybe', 'wrong', 'correct'));
+    const correctCard = cards.find(el => parseInt(el.dataset.choiceIndex || '-1', 10) === item.correct);
+    if (correctCard) correctCard.classList.add('correct');
+
+    const fullSentence = `${item.fragment} ${item.endings[item.correct]}`;
+    await speakAsync(fullSentence, { rate: 0.7, pitch: 1.05, cancelBefore: true });
+    startSentenceBuilder(fullSentence);
+    const msg = 'Das ist die Lösung. Ordne jetzt die Bilder in die richtige Reihenfolge.';
+    setSentenceStageText(msg);
+    await speakAsync(msg, { rate: 0.7, pitch: 1.05, cancelBefore: false });
+    sentenceState.locked = false;
+}
+
+async function playSentenceIntroGuide() {
+    const item = sentenceState.item;
+    if (!item) return;
+    const token = (sentenceState.guideToken || 0) + 1;
+    sentenceState.guideToken = token;
+    const name = String(currentChild?.name || '').trim();
+    const greet = name ? `Hallo ${name}. Gleich hörst du einen Satz.` : 'Hallo. Gleich hörst du einen Satz.';
+    const s1 = setSentenceStageGuideIcons({ ear: true }) || {};
+    shakeSentenceGuideEl(s1.earEl);
+    await speakAsync(greet, { rate: 0.7, pitch: 1.05, cancelBefore: true });
+    if (sentenceState.guideToken !== token) return;
+    await speakAsync(item.fragment, { rate: 0.7, pitch: 1.05, cancelBefore: false });
+    sentenceState.promptStartedAt = nowMs();
+    sentenceState.phase = 'choose';
+    if (sentenceState.guideToken !== token) return;
+    const s2 = setSentenceStageGuideIcons({ ear: true, magnifier: true }) || {};
+    shakeSentenceGuideEl(s2.magnifierEl);
+    await speakAsync('Such dir das Bild aus was am besten dazu passt.', { rate: 0.7, pitch: 1.05, cancelBefore: false });
+    if (sentenceState.guideToken !== token) return;
+    const s3 = setSentenceStageGuideIcons({ ear: true, magnifier: true, speaker: true }) || {};
+    shakeSentenceGuideEl(s3.speakerBtn);
+    await speakAsync('Wenn du den Satz nochmal hören möchtest dann wähle den Lautsprecher.', { rate: 0.7, pitch: 1.05, cancelBefore: false });
+    if (sentenceState.guideToken !== token) return;
+    const s4 = setSentenceStageGuideIcons({ ear: true, magnifier: true, speaker: true, solution: true }) || {};
+    shakeSentenceGuideEl(s4.solutionBtn);
+    await speakAsync('Der grüne Knopf zeigt dir die Lösung.', { rate: 0.7, pitch: 1.05, cancelBefore: false });
 }
 
 function flashSentenceNextAttention(ms = 2000) {
@@ -3374,49 +3764,71 @@ async function openSentenceGame() {
     if (t - sentenceLastOpenAt < 650) return;
     sentenceLastOpenAt = t;
     showScreen('sentence');
-    sentenceState = { item: null, repetitions: 0, promptStartedAt: 0, locked: false, selectedIndex: null, phase: 'intro' };
+    sentenceState = { item: null, repetitions: 0, promptStartedAt: 0, locked: false, selectedIndex: null, phase: 'intro', started: false, needsIntro: true, guideToken: 0 };
     getOrInitGameDifficulty('sentence', { paceMs: 850, level: 1, stableStreak: 0 });
     const replay = document.getElementById('btn-sentence-replay');
-    if (replay) replay.onclick = async () => replaySentencePrompt();
-    const thumbs = document.getElementById('btn-sentence-thumbs-up');
-    if (thumbs) thumbs.onclick = async () => { if (!sentenceState.locked) await confirmSentenceSelection(); };
+    const focusBtn = document.getElementById('btn-sentence-focus');
+    if (replay) replay.disabled = false;
+    if (focusBtn) focusBtn.disabled = true;
     const next = document.getElementById('btn-sentence-next');
+    if (next) next.disabled = true;
+    const endBtn = document.getElementById('btn-end-sentence');
+    if (endBtn) endBtn.disabled = true;
+    resetSentenceBuilder();
+    const opts = document.getElementById('sentence-options');
+    if (opts) opts.innerHTML = '';
+    setSentenceStageGuideIcons({});
+
+    const startSession = async () => {
+        if (sentenceState.locked) return;
+        if (sentenceState.started) return;
+        sentenceState.started = true;
+        sentenceState.guideToken += 1;
+        if (focusBtn) focusBtn.disabled = false;
+        if (next) next.disabled = true;
+        if (endBtn) endBtn.disabled = false;
+        await startSentenceRound(true);
+        sentenceState.locked = true;
+        await playSentenceIntroGuide();
+        sentenceState.locked = false;
+    };
+    if (replay) replay.onclick = async () => {
+        if (!sentenceState.started) {
+            await startSession();
+            return;
+        }
+        await replaySentencePrompt();
+    };
+    if (focusBtn) focusBtn.onclick = () => {
+        const opts = document.getElementById('sentence-options');
+        if (!opts) return;
+        opts.classList.toggle('is-focus');
+        if (opts.classList.contains('is-focus')) {
+            setTimeout(() => {
+                try { opts.classList.remove('is-focus'); } catch {}
+            }, 1600);
+        }
+    };
     if (next) next.onclick = async () => {
+        if (!sentenceState.started) return;
+        if (sentenceBuilderState.active && !sentenceBuilderState.placed.every(Boolean)) return;
         sentenceState.locked = true;
         await startSentenceRound(true);
     };
     const diff = getGameDifficulty('sentence') || {};
     updateSentenceProgress(clamp(diff.level || 1, 1, SENTENCE_MAX_LEVEL), SENTENCE_MAX_LEVEL);
-    await startSentenceRound(true);
-
-    const token = ++sentenceIntroToken;
-    setTimeout(async () => {
-        if (token !== sentenceIntroToken) return;
-        if (!screens.sentence?.classList?.contains('active')) return;
-        if (sentenceState.phase !== 'intro') return;
-        if (sentenceState.locked) return;
-        const name = String(currentChild?.name || '').trim();
-        const greet = name ? `Hallo ${name}! ${SENTENCE_INTRO_TEXT}` : `Hallo! ${SENTENCE_INTRO_TEXT}`;
-        sentenceState.locked = true;
-        setSentenceStageText(greet);
-        await speakAsync(greet, { rate: 0.7, pitch: 1.05 });
-        sentenceState.locked = false;
-    }, 1500);
+    setSentenceStageGuideIcons({});
+    await startSession();
 }
 
 async function replaySentencePrompt() {
     if (!sentenceState.item) return;
-    const replay = document.getElementById('btn-sentence-replay');
-    sentenceState.locked = true;
-    if (replay) replay.disabled = true;
+    sentenceState.guideToken += 1;
     sentenceIntroToken += 1;
     sentenceState.phase = 'choose';
-    await speakAsync(sentenceState.item.fragment, { rate: 0.7, pitch: 1.05 });
-    await speakAsync(SENTENCE_READY_TEXT, { rate: 0.7, pitch: 1.05 });
-    setSentenceStageText(SENTENCE_READY_TEXT);
+    setSentenceStageGuideIcons({ ear: true, magnifier: true, speaker: true, solution: true });
+    await speakAsync(sentenceState.item.fragment, { rate: 0.7, pitch: 1.05, cancelBefore: true });
     sentenceState.promptStartedAt = nowMs();
-    if (replay) replay.disabled = false;
-    sentenceState.locked = false;
 }
 
 async function startSentenceRound(newItem) {
@@ -3433,22 +3845,21 @@ async function startSentenceRound(newItem) {
 
     const info = document.getElementById('sentence-info');
     if (info) info.textContent = '';
+    resetSentenceBuilder();
     const levelEl = document.getElementById('sentence-level');
     if (levelEl) levelEl.textContent = `Unterlevel ${level}/${SENTENCE_MAX_LEVEL}`;
     updateSentenceProgress(level, SENTENCE_MAX_LEVEL);
-    setSentenceStageText(SENTENCE_START_HINT);
+    setSentenceStageGuideIcons({ speaker: true });
     const opts = document.getElementById('sentence-options');
     if (!opts) return;
     opts.innerHTML = '';
-    const thumbs = document.getElementById('btn-sentence-thumbs-up');
-    if (thumbs) thumbs.disabled = true;
     const next = document.getElementById('btn-sentence-next');
+    if (next) next.disabled = true;
     if (sentenceNextAttentionTimeout) {
         clearTimeout(sentenceNextAttentionTimeout);
         sentenceNextAttentionTimeout = null;
     }
     if (next) {
-        next.disabled = true;
         next.classList.remove('is-attention');
     }
 
@@ -3473,7 +3884,6 @@ async function startSentenceRound(newItem) {
         card.addEventListener('click', async () => {
             if (sentenceState.locked) return;
             if (sentenceState.phase !== 'choose') return;
-            sentenceState.locked = true;
             await selectSentenceOption(card, opt.i);
         });
         opts.appendChild(card);
@@ -3492,10 +3902,7 @@ async function selectSentenceOption(cardEl, selectedIndex) {
     }
     if (cardEl) cardEl.classList.add('selected');
     sentenceState.selectedIndex = selectedIndex;
-    const thumbs = document.getElementById('btn-sentence-thumbs-up');
-    if (thumbs) thumbs.disabled = false;
-    await speakAsync(`${item.fragment} ${item.endings[selectedIndex]}`, { rate: 0.7, pitch: 1.05 });
-    sentenceState.locked = false;
+    await speakAsync(`${item.fragment} ${item.endings[selectedIndex]}`, { rate: 0.7, pitch: 1.05, cancelBefore: true });
 }
 
 async function confirmSentenceSelection() {
@@ -3512,17 +3919,13 @@ async function confirmSentenceSelection() {
         ? Array.from(opts.querySelectorAll('.word-card')).find(el => parseInt(el.dataset.choiceIndex || '-1', 10) === selectedIndex)
         : null;
     if (selectedCard) selectedCard.classList.remove('selected');
-    const thumbs = document.getElementById('btn-sentence-thumbs-up');
-    if (thumbs) thumbs.disabled = true;
-
     if (correct) {
         if (selectedCard) selectedCard.classList.add('correct');
-        await speakAsync(`${item.fragment} ${item.endings[item.correct]}`, { rate: 0.7, pitch: 1.05 });
-        const praise = 'Toll, gut gemacht! Drück jetzt den blauen Knopf. Dann geht es weiter.';
+        const fullSentence = `${item.fragment} ${item.endings[item.correct]}`;
+        await speakAsync(fullSentence, { rate: 0.7, pitch: 1.05 });
+        startSentenceBuilder(fullSentence);
+        const praise = 'Super. Ordne jetzt die Bilder in die richtige Reihenfolge.';
         setSentenceStageText(praise);
-        const next = document.getElementById('btn-sentence-next');
-        if (next) next.disabled = false;
-        flashSentenceNextAttention(2000);
         await speakAsync(praise, { rate: 0.7, pitch: 1.05 });
         recordOutcomeForDimensions({ gameId: 'sentence', dimensions: ['E', 'A', 'D'], correct: true, responseMs, repetitions });
         const cur = adaptDifficultyGeneric('sentence', { correct: true, responseMs, repetitions });
@@ -3541,7 +3944,6 @@ async function confirmSentenceSelection() {
     setGameDifficulty('sentence', { level: nextLevel });
     sentenceState.repetitions = repetitions + 1;
     sentenceState.selectedIndex = null;
-    if (thumbs) thumbs.disabled = true;
     sentenceState.locked = false;
 }
 
@@ -3913,9 +4315,10 @@ const LISTEN_LEVELS = {
     2: { pool: ['tasse', 'kasse', 'hand', 'sand', 'tisch', 'fisch'], minimal: true },
     3: { pool: ['note', 'rote', 'leiter', 'weiter', 'licht', 'pflicht'], minimal: true }
 };
-let listenState = { a: '', b: '', same: false, repetitions: 0, promptStartedAt: 0, locked: false };
+let listenState = { a: '', b: '', same: false, repetitions: 0, promptStartedAt: 0, locked: false, started: false };
 let listenLastOpenAt = 0;
 let listenIntroToken = 0;
+let listenGuideToken = 0;
 let listenReplayAttentionTimeout = null;
 
 function flashListenReplayAttention(ms = 2000) {
@@ -3930,6 +4333,94 @@ function flashListenReplayAttention(ms = 2000) {
         btn.classList.remove('is-attention');
         listenReplayAttentionTimeout = null;
     }, Math.max(0, ms || 0));
+}
+
+function setListenGuideState(flags = {}) {
+    const box = document.getElementById('listen-guide');
+    if (!box) return;
+    const ear = !!flags.ear;
+    const miniButtons = !!flags.miniButtons;
+    const question = !!flags.question;
+    if (!ear && !miniButtons && !question) {
+        box.innerHTML = '';
+        box.style.display = 'none';
+        return;
+    }
+    box.style.display = 'block';
+    box.innerHTML = '';
+    const row = document.createElement('div');
+    row.className = 'listen-guide-row';
+    const left = document.createElement('div');
+    left.className = 'listen-guide-left';
+    const right = document.createElement('div');
+    right.className = 'listen-guide-right';
+    if (ear) {
+        const icon = document.createElement('div');
+        icon.className = 'listen-guide-icon';
+        icon.textContent = '👂';
+        left.appendChild(icon);
+    }
+    if (miniButtons) {
+        const same = document.createElement('button');
+        same.type = 'button';
+        same.className = 'listen-guide-mini-symbol-btn same';
+        same.textContent = '＝';
+        same.setAttribute('aria-label', 'gleich');
+        const diff = document.createElement('button');
+        diff.type = 'button';
+        diff.className = 'listen-guide-mini-symbol-btn diff';
+        diff.textContent = '≠';
+        diff.setAttribute('aria-label', 'anders');
+        right.appendChild(same);
+        right.appendChild(diff);
+    }
+    if (question) {
+        const q = document.createElement('div');
+        q.className = 'listen-guide-mini-q';
+        q.textContent = '❓';
+        right.appendChild(q);
+    }
+    row.appendChild(left);
+    row.appendChild(right);
+    box.appendChild(row);
+}
+
+const listenShakeTimers = new WeakMap();
+function shakeListenElement(el) {
+    if (!el) return;
+    try { el.classList.remove('listen-shake'); } catch {}
+    try { void el.offsetWidth; } catch {}
+    try { el.classList.add('listen-shake'); } catch {}
+    const prev = listenShakeTimers.get(el);
+    if (prev) clearTimeout(prev);
+    const t = setTimeout(() => {
+        try { el.classList.remove('listen-shake'); } catch {}
+        listenShakeTimers.delete(el);
+    }, 1000);
+    listenShakeTimers.set(el, t);
+}
+
+async function playListenIntroGuide() {
+    const token = ++listenGuideToken;
+    const replayBtn = document.getElementById('btn-listen-replay');
+    const sameBtn = document.getElementById('btn-listen-same');
+    const diffBtn = document.getElementById('btn-listen-diff');
+    setListenGuideState({ ear: true });
+    await speakAsync('Hör gut zu.', { rate: 0.7, pitch: 1.05, cancelBefore: true });
+    if (token !== listenGuideToken) return;
+    setListenGuideState({ ear: true, miniButtons: true });
+    shakeListenElement(sameBtn);
+    await speakAsync('Klingen sie gleich drückst du den grünen Knopf.', { rate: 0.7, pitch: 1.05, cancelBefore: false });
+    if (token !== listenGuideToken) return;
+    setListenGuideState({ ear: true, miniButtons: true });
+    shakeListenElement(diffBtn);
+    await speakAsync('Klingen sie nicht gleich drückst du den blauen Knopf.', { rate: 0.7, pitch: 1.05, cancelBefore: false });
+    if (token !== listenGuideToken) return;
+    setListenGuideState({ ear: true, question: true });
+    shakeListenElement(replayBtn);
+    await speakAsync('Drück auf das Fragezeichen.', { rate: 0.7, pitch: 1.05, cancelBefore: false });
+    if (token !== listenGuideToken) return;
+    await speakAsync('Und wir fangen an.', { rate: 0.7, pitch: 1.05, cancelBefore: false });
 }
 
 function updateListenProgress(level, maxLevel) {
@@ -3986,6 +4477,7 @@ function createListenRevealCard(word, idx, difficulty) {
 function renderListenRevealStage(a, b, tier) {
     const stageBox = document.getElementById('listen-stage');
     if (!stageBox) return null;
+    stageBox.style.display = 'block';
     stageBox.innerHTML = '';
     const grid = document.createElement('div');
     grid.className = 'listen-reveal-grid';
@@ -4003,34 +4495,33 @@ async function openListenGame() {
     if (t - listenLastOpenAt < 650) return;
     listenLastOpenAt = t;
     showScreen('listen');
-    listenState = { a: '', b: '', same: false, repetitions: 0, promptStartedAt: 0, locked: false };
+    listenState = { a: '', b: '', same: false, repetitions: 0, promptStartedAt: 0, locked: false, started: false };
     getOrInitGameDifficulty('listen', { paceMs: 850, gapMs: 520, level: 1, stableStreak: 0 });
     const replay = document.getElementById('btn-listen-replay');
-    if (replay) replay.onclick = async () => replayListenPrompt();
+    if (replay) replay.onclick = async () => { if (listenState.started) await replayListenPrompt(); };
     const sameBtn = document.getElementById('btn-listen-same');
     const diffBtn = document.getElementById('btn-listen-diff');
-    if (sameBtn) sameBtn.onclick = async () => { if (!listenState.locked) await handleListenChoice(true); };
-    if (diffBtn) diffBtn.onclick = async () => { if (!listenState.locked) await handleListenChoice(false); };
+    if (sameBtn) sameBtn.onclick = async () => { if (listenState.started && !listenState.locked) await handleListenChoice(true); };
+    if (diffBtn) diffBtn.onclick = async () => { if (listenState.started && !listenState.locked) await handleListenChoice(false); };
+    const startBtn = document.getElementById('btn-listen-session-start');
+    if (replay) replay.disabled = true;
+    if (sameBtn) sameBtn.disabled = true;
+    if (diffBtn) diffBtn.disabled = true;
+    setListenGuideState({});
     const diff = getGameDifficulty('listen') || {};
     updateListenProgress(clamp(diff.level || 1, 1, LISTEN_MAX_LEVEL), LISTEN_MAX_LEVEL);
-    await nextListenTrial(true);
-
-    const token = ++listenIntroToken;
-    setTimeout(async () => {
-        if (token !== listenIntroToken) return;
-        if (!screens.listen?.classList?.contains('active')) return;
-        const btn = document.getElementById('btn-listen-replay');
-        if (!btn) return;
-        const prevDisabled = btn.disabled;
-        btn.disabled = true;
-        await speakAsync('Hör gut zu. Ich sage dir zwei Wörter.', { rate: 0.7, pitch: 1.05 });
-        await speakAsync('Klingen sie gleich drückst du den grünen Knopf.', { rate: 0.7, pitch: 1.05, cancelBefore: false });
-        await speakAsync('Klingen sie nicht gleich drückst du den blauen Knopf.', { rate: 0.7, pitch: 1.05, cancelBefore: false });
-        flashListenReplayAttention(2000);
-        await speakAsync('Drück auf das Fragezeichen.', { rate: 0.7, pitch: 1.05, cancelBefore: false });
-        await speakAsync('Und wir fangen an.', { rate: 0.7, pitch: 1.05, cancelBefore: false });
-        btn.disabled = prevDisabled;
-    }, 1500);
+    const startSession = async () => {
+        if (listenState.locked) return;
+        if (listenState.started) return;
+        listenState.started = true;
+        listenIntroToken += 1;
+        if (replay) replay.disabled = false;
+        if (sameBtn) sameBtn.disabled = false;
+        if (diffBtn) diffBtn.disabled = false;
+        await nextListenTrial(true);
+        await playListenIntroGuide();
+    };
+    if (startBtn) startBtn.onclick = async () => startSession();
 }
 
 async function replayListenPrompt() {
@@ -4071,11 +4562,10 @@ async function nextListenTrial(newPair) {
         info.innerHTML = `
             <span class="listen-info-line">Drück auf „Frag mich etwas ❓“.</span>
             <span class="listen-info-line">
-                Sind die Wörter gleich
+                gleich
                 <button type="button" class="listen-mini-symbol-btn same" aria-label="gleich">＝</button>
                 oder anders
                 <button type="button" class="listen-mini-symbol-btn diff" aria-label="anders">≠</button>
-                ?
             </span>
         `;
         const miniSame = info.querySelector('.listen-mini-symbol-btn.same');
@@ -4083,7 +4573,10 @@ async function nextListenTrial(newPair) {
         if (miniSame) miniSame.onclick = async () => { if (!listenState.locked) await handleListenChoice(true); };
         if (miniDiff) miniDiff.onclick = async () => { if (!listenState.locked) await handleListenChoice(false); };
     }
-    if (stageBox) stageBox.innerHTML = `<div class="listen-ear-hint"><span class="listen-ear-icon">👂</span><span class="listen-ear-text">Hör gut zu</span></div>`;
+    if (stageBox) {
+        stageBox.innerHTML = '';
+        stageBox.style.display = 'none';
+    }
     updateListenProgress(sublevel, LISTEN_MAX_LEVEL);
     const tier = getListenTier(sublevel);
     const cfg = LISTEN_LEVELS[tier] || LISTEN_LEVELS[1];
