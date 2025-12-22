@@ -371,19 +371,27 @@
         <div class="container">
             <div class="header">
                 <div class="sentence-header-row">
-                    <h2>Satz ergänzen</h2>
+                    <div class="sentence-title-row">
+                        <h2>Satz ergänzen</h2>
+                    </div>
                     <div id="sentence-level" class="sentence-level"></div>
                 </div>
             </div>
             <div class="breadcrumb">Start → Übersicht → Satz ergänzen</div>
             <p id="sentence-info" class="screen-description"></p>
-            <div id="sentence-stage" class="info-box" style="margin-top:10px;"></div>
+            <div class="sentence-controls" aria-label="Satz Steuerung">
+                <button id="btn-sentence-replay" class="btn btn-success" title="Vorlesen" aria-label="Vorlesen">🔊</button>
+                <button id="btn-sentence-focus" class="btn btn-warning" title="Fokus" aria-label="Fokus">🔍</button>
+            </div>
         <div id="sentence-options" class="word-list"></div>
+        <div id="sentence-builder" class="sentence-builder" style="display:none;">
+            <div id="sentence-builder-slots" class="sentence-builder-slots" aria-label="Satz Reihenfolge"></div>
+            <div id="sentence-builder-tiles" class="sentence-builder-tiles word-list" aria-label="Satz Bilder"></div>
+        </div>
+        <div id="sentence-stage" class="info-box" style="margin-top:10px;"></div>
         <div class="action-buttons">
-            <button id="btn-sentence-replay" class="btn btn-secondary" title="Mit dem Vorlesen beginnen" aria-label="Mit dem Vorlesen beginnen">🔊</button>
-            <button id="btn-end-sentence" class="btn btn-error">Zurück</button>
-            <button id="btn-sentence-thumbs-up" class="btn btn-success" disabled>Auswahl bestätigen</button>
-            <button id="btn-sentence-next" class="btn btn-blue" disabled>nächstes Level</button>
+            <button id="btn-end-sentence" class="btn btn-error">Letztes Level</button>
+            <button id="btn-sentence-next" class="btn btn-blue" disabled>Nächstes Level</button>
         </div>
             <div id="sentence-progress-wrap" class="progress-bar" style="margin-bottom:0;">
                 <div id="sentence-progress-fill" class="progress-fill"></div>
@@ -416,11 +424,15 @@
     <div id="listen-screen" class="screen">
         <div class="container">
             <div class="header">
-                <div>
-                    <h2>Hör genau hin!</h2>
+                <div class="listen-header-row">
+                    <div class="listen-title-row">
+                        <h2>Hör genau hin!</h2>
+                        <button id="btn-listen-session-start" class="btn btn-primary">Los</button>
+                    </div>
                 </div>
             </div>
             <div class="breadcrumb">Start → Übersicht → Hör genau hin!</div>
+            <div id="listen-guide" class="info-box" style="margin-top:10px;"></div>
             <div id="listen-progress-wrap" class="progress-bar" style="margin-bottom:14px;">
                 <div id="listen-progress-fill" class="progress-fill"></div>
             </div>
