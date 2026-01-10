@@ -18,43 +18,7 @@ Diese Web-basierte Demo-Anwendung dient der phonologischen Sprachförderung für
 - Mikrofon-Zugriff
 - Lokaler Webserver (z.B. Live Server in VS Code)
 
-### Setup
-1. Repository klonen:
-```bash
-   git clone https://github.com/[dein-username]/sprachfoerderung-demo.git
-   cd sprachfoerderung-demo
-```
-
-2. Mit Live Server öffnen oder auf GitHub Pages hosten
-
-3. Bilder hinzufügen:
-   - Bilder in `images/level1/`, `images/level2/`, `images/level3/` platzieren
-   - Dateinamen entsprechend der Reime benennen (z.B. `haus.png`, `maus.png`)
-
-## Anpassung der Reime
-
-### Reime ändern
-1. Öffne `data/levels.json`
-2. Ändere die `reim_ideen` Arrays für jeden Unter-Level
-3. Speichern - Änderungen sind sofort aktiv
-
-Beispiel:
-```json
-{
-  "id": "l1_s1",
-  "reim_ideen": ["Haus", "Maus", "Laus"],
-  "schwierigkeitsgrad": "leicht"
-}
-```
-
-### Bilder zuordnen
-1. Bild mit Reim-Wort benennen: `haus.png`
-2. In entsprechenden Ordner legen: `images/level1/haus.png`
-3. Anwendung lädt Bilder automatisch basierend auf Reim-Wort
-
-## Speech-to-Text Konfiguration
-
-Die Anwendung nutzt die **Web Speech API** (verfügbar in Chrome, Edge, Safari).
+Beispi
 
 ### Genauigkeitseinstellungen
 In `js/speech-recognition.js` können folgende Parameter angepasst werden:
@@ -91,4 +55,4 @@ Siehe `js/speech-recognition.js` für Implementierungsdetails.
 MIT License - Freie Nutzung für pädagogische Zwecke
 
 ## Kontakt & Support
-Bei Fragen oder Anregungen: [Deine E-Mail]
+Bei Fragen oder Anregungen: 
